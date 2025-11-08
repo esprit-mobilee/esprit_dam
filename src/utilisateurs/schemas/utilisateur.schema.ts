@@ -4,6 +4,10 @@ import { Role } from 'src/auth/enums/role.enum';
 
 @Schema({ timestamps: true })
 export class Utilisateur extends Document {
+  // identifiant de connexion (ST12345, PARENT001, PROF.AHMED, etc.)
+  @Prop({ unique: true, sparse: true })
+  identifiant?: string;
+
   @Prop()
   studentId?: string;
 
@@ -25,6 +29,7 @@ export class Utilisateur extends Document {
   @Prop({ required: true })
   password: string;
 
+  // on inclut ton nouveau rôle "parent"
   @Prop({ enum: Role, default: Role.User })
   role: Role;
 

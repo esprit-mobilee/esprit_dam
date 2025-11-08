@@ -1,4 +1,8 @@
-import { Injectable, BadRequestException, UnauthorizedException } from '@nestjs/common';
+import {
+  Injectable,
+  BadRequestException,
+  UnauthorizedException,
+} from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
 import { InjectModel } from '@nestjs/mongoose';
 import { Model, Types } from 'mongoose';
@@ -6,7 +10,10 @@ import * as bcrypt from 'bcrypt';
 import { v4 as uuidv4 } from 'uuid';
 import { SignupDto } from './dtos/signup.dto';
 import { LoginDto } from './dtos/login.dto';
-import { Utilisateur, UtilisateurDocument } from 'src/utilisateurs/schemas/utilisateur.schema';
+import {
+  Utilisateur,
+  UtilisateurDocument,
+} from 'src/utilisateurs/schemas/utilisateur.schema';
 import { RefreshToken } from './schemas/refresh-token.schema';
 import { Role } from './enums/role.enum';
 
@@ -26,20 +33,30 @@ export class AuthService {
   // 📝 SIGNUP - Inscription
   // ----------------------------
   async signUp(signupData: SignupDto) {
-    const { email, password, name, role } = signupData;
+    const { email, password, name, role, studentId, identifiant } = signupData;
 
+    // vérifier email
     const emailInUse = await this.utilisateurModel.findOne({ email });
-    if (emailInUse) throw new BadRequestException('Email déjà utilisé');
+    if (emailInUse) {
+      throw new BadRequestException('Email déjà utilisé');
+    }
+
+    // vérifier identifiant (c’est ce que l’app Android utilise pour login)
+    const identifiantInUse = await this.utilisateurModel.findOne({ identifiant });
+    if (identifiantInUse) {
+      throw new BadRequestException('Identifiant déjà utilisé');
+    }
 
     const hashedPassword = await bcrypt.hash(password, 10);
 
     const newUser = await this.utilisateurModel.create({
+      identifiant,
       firstName: name,
       lastName: '',
       email,
       password: hashedPassword,
       age: 0,
-      studentId: '',
+      studentId: studentId ?? '', // vide pour parent
       role: role ?? Role.User,
     });
 
@@ -50,16 +67,29 @@ export class AuthService {
   // 🔐 LOGIN - Authentification
   // ----------------------------
   async login(credentials: LoginDto) {
-    const { email, password } = credentials;
-    const utilisateur = await this.utilisateurModel.findOne({ email });
+    const { identifiant, password } = credentials;
 
-    if (!utilisateur) throw new UnauthorizedException('Identifiants incorrects');
+    // chercher par identifiant OU email OU matricule
+    const utilisateur = await this.utilisateurModel.findOne({
+      $or: [
+        { identifiant }, // nouveau champ
+        { email: identifiant },
+        { studentId: identifiant },
+      ],
+    });
+
+    if (!utilisateur) {
+      throw new UnauthorizedException('Identifiants incorrects');
+    }
 
     const passwordMatch = await bcrypt.compare(password, utilisateur.password);
-    if (!passwordMatch) throw new UnauthorizedException('Identifiants incorrects');
+    if (!passwordMatch) {
+      throw new UnauthorizedException('Identifiants incorrects');
+    }
 
-    // ✅ Correction : forcer le type sur _id
-    const userId: string = (utilisateur._id as unknown as Types.ObjectId).toString();
+    const userId: string = (
+      utilisateur._id as unknown as Types.ObjectId
+    ).toString();
 
     const tokens = await this.generateUserTokens(userId, utilisateur.role);
     return {
@@ -105,10 +135,14 @@ export class AuthService {
       expiryDate: { $gte: new Date() },
     });
 
-    if (!token) throw new UnauthorizedException('Refresh Token invalide ou expiré');
+    if (!token) {
+      throw new UnauthorizedException('Refresh Token invalide ou expiré');
+    }
 
     const user = await this.utilisateurModel.findById(token.userId);
-    if (!user) throw new UnauthorizedException('Utilisateur introuvable');
+    if (!user) {
+      throw new UnauthorizedException('Utilisateur introuvable');
+    }
 
     return this.generateUserTokens(String(token.userId), user.role);
   }
@@ -116,12 +150,20 @@ export class AuthService {
   // ----------------------------
   // 🔑 CHANGE PASSWORD
   // ----------------------------
-  async changePassword(userId: string, oldPassword: string, newPassword: string) {
+  async changePassword(
+    userId: string,
+    oldPassword: string,
+    newPassword: string,
+  ) {
     const utilisateur = await this.utilisateurModel.findById(userId);
-    if (!utilisateur) throw new UnauthorizedException('Utilisateur non trouvé');
+    if (!utilisateur) {
+      throw new UnauthorizedException('Utilisateur non trouvé');
+    }
 
     const isMatch = await bcrypt.compare(oldPassword, utilisateur.password);
-    if (!isMatch) throw new UnauthorizedException('Ancien mot de passe incorrect');
+    if (!isMatch) {
+      throw new UnauthorizedException('Ancien mot de passe incorrect');
+    }
 
     utilisateur.password = await bcrypt.hash(newPassword, 10);
     await utilisateur.save();

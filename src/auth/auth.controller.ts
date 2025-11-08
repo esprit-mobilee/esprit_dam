@@ -15,7 +15,7 @@ export class AuthController {
   @HttpCode(HttpStatus.CREATED)
   @ApiOperation({ summary: 'Créer un nouveau compte utilisateur (Public)' })
   @ApiResponse({ status: 201, description: 'Utilisateur créé avec succès.' })
-  @ApiResponse({ status: 400, description: 'Email déjà utilisé ou données invalides.' })
+  @ApiResponse({ status: 400, description: 'Identifiant ou email déjà utilisé / données invalides.' })
   async signUp(@Body() signupDto: SignupDto) {
     return this.authService.signUp(signupDto);
   }
@@ -23,10 +23,12 @@ export class AuthController {
   // 🔐 CONNEXION PUBLIQUE
   @Post('login')
   @HttpCode(HttpStatus.OK)
-  @ApiOperation({ summary: 'Connexion utilisateur (Public)' })
-  @ApiResponse({ status: 200, description: 'Connexion réussie, retourne les tokens JWT.' })
+  @ApiOperation({ summary: 'Connexion utilisateur avec identifiant (Public)' })
+  @ApiResponse({ status: 200, description: 'Connexion réussie — retourne le token JWT.' })
+  @ApiResponse({ status: 400, description: 'Requête invalide — identifiant ou mot de passe manquant.' })
   @ApiResponse({ status: 401, description: 'Identifiants incorrects.' })
   async login(@Body() loginDto: LoginDto) {
+    // loginDto contient: identifiant + password
     return this.authService.login(loginDto);
   }
 
@@ -34,7 +36,7 @@ export class AuthController {
   @Post('refresh-tokens')
   @HttpCode(HttpStatus.OK)
   @ApiOperation({ summary: 'Rafraîchir les tokens JWT (Public)' })
-  @ApiResponse({ status: 200, description: 'Nouveaux tokens générés.' })
+  @ApiResponse({ status: 200, description: 'Nouveaux tokens générés avec succès.' })
   @ApiResponse({ status: 401, description: 'Refresh token invalide ou expiré.' })
   async refreshTokens(@Body() refreshTokenDto: RefreshTokenDto) {
     return this.authService.refreshTokens(refreshTokenDto.refreshToken);

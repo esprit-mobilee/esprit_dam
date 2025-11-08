@@ -1,10 +1,33 @@
 import { ApiProperty } from '@nestjs/swagger';
-import { IsEmail, IsEnum, IsNotEmpty, IsOptional, IsString, MinLength } from 'class-validator';
+import {
+  IsEmail,
+  IsEnum,
+  IsNotEmpty,
+  IsOptional,
+  IsString,
+  MinLength,
+} from 'class-validator';
 import { Role } from '../enums/role.enum';
 
 export class SignupDto {
   @ApiProperty({
-    description: 'Nom complet de l’utilisateur',
+    example: 'ST12345',
+    description: "Identifiant de connexion de l'utilisateur (ce qu'il utilisera pour se connecter)",
+  })
+  @IsString()
+  identifiant: string;
+
+  @ApiProperty({
+    example: '4SIM4',
+    description: "Matricule / ID étudiant (optionnel, pas pour les parents)",
+    required: false,
+  })
+  @IsOptional()
+  @IsString()
+  studentId?: string;
+
+  @ApiProperty({
+    description: "Nom complet de l’utilisateur",
     example: 'Mohamed Amine Sassi',
   })
   @IsString()
@@ -12,7 +35,7 @@ export class SignupDto {
   name: string;
 
   @ApiProperty({
-    description: 'Adresse email de l’utilisateur',
+    description: "Adresse email de l’utilisateur",
     example: 'amine.sassi@esprit.tn',
   })
   @IsEmail()
@@ -27,8 +50,8 @@ export class SignupDto {
   password: string;
 
   @ApiProperty({
-    description: 'Rôle de l’utilisateur (Admin, President, User)',
-    example: 'User',
+    description: 'Rôle de l’utilisateur (admin, president, teacher, student, parent)',
+    example: 'parent',
     enum: Role,
     default: Role.User,
     required: false,
