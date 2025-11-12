@@ -3,33 +3,59 @@ import { AppModule } from './app.module';
 import { AllExceptionsFilter } from './common/filters/all-exceptions.filter';
 import { ValidationPipe } from '@nestjs/common';
 import { SwaggerModule, DocumentBuilder } from '@nestjs/swagger';
+import * as os from 'os';
+import { join } from 'path';
+import { NestExpressApplication } from '@nestjs/platform-express';
+
+// 🔎 récupère automatiquement l'adresse IPv4 locale (Wi-Fi)
+function getLocalIp(): string {
+  const interfaces = os.networkInterfaces();
+  for (const name of Object.keys(interfaces)) {
+    const netIfaces = interfaces[name];
+    if (!netIfaces) continue;
+    for (const iface of netIfaces) {
+      if (iface.family === 'IPv4' && !iface.internal) {
+        return iface.address;
+      }
+    }
+  }
+  return 'localhost';
+}
 
 async function bootstrap() {
-  const app = await NestFactory.create(AppModule);
+  // ⬅️ on crée l'app en NestExpress pour pouvoir servir des fichiers statiques
+  const app = await NestFactory.create<NestExpressApplication>(AppModule);
 
-  // ✅ Autoriser les requêtes depuis le front (utile pour React, Angular ou Flutter)
+  // ✅ CORS
   app.enableCors({
-    origin: '*', // tu peux restreindre à ton domaine plus tard
-    methods: ['GET', 'POST', 'PUT', 'DELETE'],
+    origin: '*',
+    methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH'],
     allowedHeaders: ['Content-Type', 'Authorization'],
   });
 
-  // ✅ Préfixe global pour toutes les routes
+  // ✅ Préfixe global
   app.setGlobalPrefix('api');
 
-  // ✅ Validation automatique des DTOs
+  // ✅ Validation DTO
   app.useGlobalPipes(
     new ValidationPipe({
-      whitelist: true, // ignore les propriétés non déclarées dans le DTO
-      transform: true, // convertit automatiquement les types (string → number, etc.)
-      forbidNonWhitelisted: true, // bloque les champs non autorisés
+      whitelist: true,
+      transform: true,
+      forbidNonWhitelisted: true,
     }),
   );
 
-  // ✅ Gestion globale des exceptions
+  // ✅ Filtres globaux
   app.useGlobalFilters(new AllExceptionsFilter());
 
-  // 🚀 Configuration Swagger (Documentation de l'API)
+  // ✅ servir les fichiers uploadés (logos, etc.)
+  // -> un logo sauvegardé dans ./uploads/logos/xxx.png sera dispo sur
+  // http://IP:3000/uploads/logos/xxx.png
+  app.useStaticAssets(join(__dirname, '..', 'uploads'), {
+    prefix: '/uploads/',
+  });
+
+  // ✅ Swagger
   const config = new DocumentBuilder()
     .setTitle('API ESPRIT Connect')
     .setDescription(
@@ -45,7 +71,7 @@ async function bootstrap() {
         description: 'Entrez votre token JWT au format : Bearer <votre_token>',
         in: 'header',
       },
-      'access-token', // nom du schéma de sécurité
+      'access-token',
     )
     .build();
 
@@ -55,14 +81,16 @@ async function bootstrap() {
     customCss: '.swagger-ui .topbar { display: none }',
   });
 
-  // ✅ Lancer le serveur
   const port = process.env.PORT ?? 3000;
-  await app.listen(port);
+  const localIp = getLocalIp();
+
+  await app.listen(port, '0.0.0.0');
 
   console.log('✅ ValidationPipe & AllExceptionsFilter activés');
-  console.log(`🚀 Serveur en ligne : http://localhost:${port}/api`);
-  console.log('📦 MongoDB connecté via MongooseModule (voir app.module.ts)');
-  console.log(`📚 Swagger disponible sur : http://localhost:${port}/api-docs`);
+  console.log(`🚀 Serveur en ligne (PC) : http://localhost:${port}/api`);
+  console.log(`📚 Swagger (PC) : http://localhost:${port}/api-docs`);
+  console.log(`🌐 Depuis mobile : http://${localIp}:${port}/api`);
+  console.log(`📚 Swagger (réseau) : http://${localIp}:${port}/api-docs`);
 }
 
 bootstrap();

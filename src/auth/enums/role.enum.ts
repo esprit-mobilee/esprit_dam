@@ -4,4 +4,7 @@ export enum Role {
   President = 'president',
 
 
+  Teacher = 'teacher',
+  Student = 'student',
+  Parent = 'parent',
 }

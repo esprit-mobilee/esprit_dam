@@ -14,6 +14,6 @@ import { Utilisateur, UtilisateurSchema } from 'src/utilisateurs/schemas/utilisa
   ],
   controllers: [ClubsController],
   providers: [ClubsService],
-  exports: [ClubsService], // utile si d'autres modules utilisent les clubs
+  exports: [ClubsService], // ✅ exported so EventsModule & AuthModule can use it
 })
 export class ClubsModule {}
