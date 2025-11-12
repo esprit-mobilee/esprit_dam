@@ -26,6 +26,10 @@ export class Utilisateur extends Document {
   @Prop()
   avatar?: string;
 
+    // 👇👇 NEW: classe / groupe (ex: "4SIM4")
+  @Prop()
+  classGroup?: string;
+
   @Prop({ required: true })
   password: string;
 

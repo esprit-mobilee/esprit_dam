@@ -1,4 +1,5 @@
-import { IsString, IsNotEmpty, IsOptional, IsArray, IsMongoId } from 'class-validator';
+// src/clubs/dto/create-club.dto.ts
+import { IsString, IsNotEmpty, IsOptional, IsArray } from 'class-validator';
 import { ApiProperty } from '@nestjs/swagger';
 
 export class CreateClubDto {
@@ -12,12 +13,22 @@ export class CreateClubDto {
   @IsString()
   description?: string;
 
-  @ApiProperty({ example: '65f1a4b2c8a4d8c4f8b2a7e9', description: 'ID du président (optionnel)' })
+  // 👇 IMPORTANT: now it's just a string, not @IsMongoId
+  // we accept either a Mongo _id or an identifiant like "PR001"
+  @ApiProperty({
+    example: 'PR001',
+    description: 'ID MongoDB du président OU identifiant (ex: PR001)',
+    required: false,
+  })
   @IsOptional()
-  @IsMongoId()
+  @IsString()
   president?: string;
 
-  @ApiProperty({ example: ['robotique', 'innovation'], description: 'Mots-clés' })
+  @ApiProperty({
+    example: ['robotique', 'innovation'],
+    description: 'Mots-clés',
+    required: false,
+  })
   @IsOptional()
   @IsArray()
   tags?: string[];
