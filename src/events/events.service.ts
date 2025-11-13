@@ -42,4 +42,5 @@ export class EventsService {
     if (!deleted) throw new NotFoundException(`Événement avec id ${id} introuvable`);
     return { message: 'Événement supprimé avec succès' };
   }
+  // --------------------------------------------------
 }
