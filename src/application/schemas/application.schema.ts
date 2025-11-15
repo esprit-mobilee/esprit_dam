@@ -3,17 +3,21 @@ import { Document, Types } from 'mongoose';
 
 @Schema({ timestamps: true })
 export class Application extends Document {
-  @Prop({ type: Types.ObjectId, ref: 'Utilisateur', required: true })
-  userId: string;
+  @Prop({ required: true })
+  userId: string; // identifiant étudiant (HT12345 ou ObjectId string)
 
   @Prop({ type: Types.ObjectId, ref: 'InternshipOffer', required: true })
-  internshipId: string;
-
-  @Prop({ required: true })
-  cvUrl: string;
+  // en base c'est un ObjectId, mais on tape large côté TS
+  internshipId: Types.ObjectId | string;
 
   @Prop()
-  coverLetter: string;
+  cvUrl?: string; // URL externe OU content:// URI OU chemin /uploads/...
+
+  @Prop()
+  coverLetter?: string; // texte
+
+  @Prop()
+  coverLetterFileUrl?: string; // fichier uploadé (optionnel)
 
   @Prop({ default: 0 })
   aiScore: number;
