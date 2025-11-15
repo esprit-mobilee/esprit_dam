@@ -1,3 +1,4 @@
+// src/internship-offers/schemas/internship-offer.schema.ts
 import { Prop, Schema, SchemaFactory } from '@nestjs/mongoose';
 import { Document } from 'mongoose';
 
@@ -22,6 +23,9 @@ export class InternshipOffer {
 
   @Prop()
   salary?: number;
+
+  @Prop()
+  logoUrl?: string; // <-- nouveau champ pour le logo
 }
 
 export const InternshipOfferSchema = SchemaFactory.createForClass(InternshipOffer);
