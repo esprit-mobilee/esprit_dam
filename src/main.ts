@@ -4,8 +4,6 @@ import { AllExceptionsFilter } from './common/filters/all-exceptions.filter';
 import { ValidationPipe } from '@nestjs/common';
 import { SwaggerModule, DocumentBuilder } from '@nestjs/swagger';
 import * as os from 'os';
-import { NestExpressApplication } from '@nestjs/platform-express';
-import { join } from 'path';
 
 // 🔎 récupère automatiquement l'adresse IPv4 locale (Wi-Fi)
 function getLocalIp(): string {
@@ -14,28 +12,25 @@ function getLocalIp(): string {
     const netIfaces = interfaces[name];
     if (!netIfaces) continue;
     for (const iface of netIfaces) {
-      // on veut l'IPv4, non interne
       if (iface.family === 'IPv4' && !iface.internal) {
         return iface.address;
       }
     }
   }
-  // fallback
   return 'localhost';
 }
 
 async function bootstrap() {
-  // 👇 important: NestExpressApplication pour servir des fichiers statiques
-  const app = await NestFactory.create<NestExpressApplication>(AppModule);
+  const app = await NestFactory.create(AppModule);
 
-  // ✅ Autoriser les requêtes depuis le front (utile pour React, Angular, Flutter ou Android)
+  // ✅ CORS
   app.enableCors({
-    origin: '*', // tu peux restreindre à ton IP ou ton domaine plus tard
+    origin: '*',
     methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH'],
     allowedHeaders: ['Content-Type', 'Authorization'],
   });
 
-  // ✅ Préfixe global pour toutes les routes API
+  // ✅ Préfixe global pour toutes les routes
   app.setGlobalPrefix('api');
 
   // ✅ Exposer le dossier /uploads (images clubs, events, etc.)
@@ -44,19 +39,26 @@ async function bootstrap() {
     prefix: '/uploads',
   });
 
-  // ✅ Validation automatique des DTOs
+  // ✅ Validation DTO
   app.useGlobalPipes(
     new ValidationPipe({
-      whitelist: true, // ignore les propriétés non déclarées dans le DTO
-      transform: true, // convertit automatiquement les types (string → number, etc.)
-      forbidNonWhitelisted: true, // bloque les champs non autorisés
+      whitelist: true,
+      transform: true,
+      forbidNonWhitelisted: true,
     }),
   );
 
-  // ✅ Gestion globale des exceptions
+  // ✅ Filtres globaux
   app.useGlobalFilters(new AllExceptionsFilter());
 
-  // 🚀 Configuration Swagger (Documentation de l'API)
+  // ✅ servir les fichiers uploadés (logos, etc.)
+  // -> un logo sauvegardé dans ./uploads/logos/xxx.png sera dispo sur
+  // http://IP:3000/uploads/logos/xxx.png
+  app.useStaticAssets(join(__dirname, '..', 'uploads'), {
+    prefix: '/uploads/',
+  });
+
+  // ✅ Swagger
   const config = new DocumentBuilder()
     .setTitle('API ESPRIT Connect')
     .setDescription(
@@ -83,15 +85,14 @@ async function bootstrap() {
   });
 
   const port = process.env.PORT ?? 3000;
-  const localIp = getLocalIp(); // 👈 ici on récupère ton IP courante
+  const localIp = getLocalIp();
 
-  // ✅ Lancer le serveur sur toutes les interfaces réseau (important pour Android)
   await app.listen(port, '0.0.0.0');
 
   console.log('✅ ValidationPipe & AllExceptionsFilter activés');
   console.log(`🚀 Serveur en ligne (PC) : http://localhost:${port}/api`);
   console.log(`📚 Swagger (PC) : http://localhost:${port}/api-docs`);
-  console.log(`🌐 Depuis Android / téléphone : http://${localIp}:${port}/api`);
+  console.log(`🌐 Depuis mobile : http://${localIp}:${port}/api`);
   console.log(`📚 Swagger (réseau) : http://${localIp}:${port}/api-docs`);
 }
 
