@@ -1,23 +1,25 @@
 import {
+  Body,
   Controller,
+  Delete,
+  ForbiddenException,
   Get,
+  Param,
   Post,
   Put,
-  Delete,
-  Param,
-  Body,
-  UseGuards,
   UploadedFile,
+  UseGuards,
   UseInterceptors,
+  Req,
 } from '@nestjs/common';
 import { EventsService } from './events.service';
 import { CreateEventDto } from './dto/create-event.dto';
 import { UpdateEventDto } from './dto/update-event.dto';
 import {
   ApiBearerAuth,
+  ApiConsumes,
   ApiOperation,
   ApiTags,
-  ApiConsumes,
 } from '@nestjs/swagger';
 import { AuthenticationGuard } from 'src/auth/guards/authentication.guard';
 import { RolesGuard } from 'src/auth/guards/roles.guard';
@@ -41,7 +43,9 @@ export class EventsController {
   create(
     @UploadedFile() file: Express.Multer.File,
     @Body() dto: CreateEventDto,
+    @Req() req: any,
   ) {
+    // Optionnel : on pourrait forcer dto.organizerId = req.user._id ici
     return this.eventsService.create(dto, file);
   }
 
@@ -58,22 +62,61 @@ export class EventsController {
   }
 
   @Put(':id')
-  @Roles(Role.Admin)
-  @ApiOperation({ summary: 'Mettre à jour un événement (Admin)' })
+  @Roles(Role.Admin, Role.President)
+  @ApiOperation({ summary: 'Mettre à jour un événement (Admin/Président)' })
   @ApiConsumes('multipart/form-data')
   @UseInterceptors(FileInterceptor('image', multerOptions('events')))
-  update(
+  async update(
     @Param('id') id: string,
     @UploadedFile() file: Express.Multer.File,
     @Body() dto: UpdateEventDto,
+    @Req() req: any,
   ) {
+    const user = req.user;
+    const userId: string = user.userId || user._id?.toString();
+
+    // 🔐 Admin : accès complet
+    if (user.role !== Role.Admin) {
+      // Ici, on est forcément Président (grâce à @Roles)
+      const event = await this.eventsService.findOne(id);
+
+      // organizerId peut être un ObjectId ou un objet peuplé
+      const organizerId =
+        (event.organizerId as any)?._id?.toString() ??
+        (event.organizerId as any)?.toString();
+
+      if (!organizerId || organizerId !== userId) {
+        throw new ForbiddenException(
+          'Vous ne pouvez modifier que les événements de votre club.',
+        );
+      }
+    }
+
     return this.eventsService.update(id, dto, file);
   }
 
   @Delete(':id')
-  @Roles(Role.Admin)
-  @ApiOperation({ summary: 'Supprimer un événement (Admin)' })
-  remove(@Param('id') id: string) {
+  @Roles(Role.Admin, Role.President)
+  @ApiOperation({ summary: 'Supprimer un événement (Admin/Président)' })
+  async remove(@Param('id') id: string, @Req() req: any) {
+    const user = req.user;
+    const userId: string = user.userId || user._id?.toString();
+
+    // 🔐 Admin : accès complet
+    if (user.role !== Role.Admin) {
+      const event = await this.eventsService.findOne(id);
+
+      const organizerId =
+        (event.organizerId as any)?._id?.toString() ??
+        (event.organizerId as any)?.toString();
+
+      if (!organizerId || organizerId !== userId) {
+        throw new ForbiddenException(
+          'Vous ne pouvez supprimer que les événements de votre club.',
+        );
+      }
+    }
+
     return this.eventsService.remove(id);
   }
 }
