@@ -54,12 +54,11 @@ export class DocumentRequestService {
   }
 
   /**
-   * 📝 Créer une demande de document et signer le document
+   * 📝 Créer une demande de document et récupérer l'URL du fichier existant
    */
   async create(userId: string, createDto: CreateDocumentRequestDto): Promise<{ 
     documentRequest: DocumentRequest; 
-    fileUrl: string; 
-    fileName: string;
+    fileUrl: string | null;
   }> {
     // Vérifier que l'utilisateur existe
     const user = await this.userModel.findById(userId);
@@ -67,71 +66,25 @@ export class DocumentRequestService {
       throw new NotFoundException('Utilisateur introuvable');
     }
 
-    // Créer la demande de document
+    // 1️⃣ Créer la demande de document
     const documentRequest = await this.documentRequestModel.create({
       userId: new Types.ObjectId(userId),
       type: createDto.type,
       annee: createDto.annee,
     });
 
-    // Signer électroniquement le document
-    const { fileUrl, fileName } = await this.signDocument(
-      userId,
-      createDto.fileUrl,
-      createDto.type,
-      createDto.annee,
-      String(documentRequest._id),
-    );
-
-    // Sauvegarder l'URL du document signé dans la table DocumentFile
-    await this.documentFileModel.create({
+    // 2️⃣ Chercher le fichier existant dans DocumentFile
+    const documentFile = await this.documentFileModel.findOne({
       userId: new Types.ObjectId(userId),
-      nomFichier: fileName,
-      url: fileUrl,
-      documentRequestId: documentRequest._id,
+      type: createDto.type,
+      annee: createDto.annee,
     });
 
+    // 3️⃣ Retourner la demande + l'URL trouvée (ou null si non trouvé)
     return {
       documentRequest: await this.findOne(String(documentRequest._id)),
-      fileUrl,
-      fileName,
+      fileUrl: documentFile?.url || null,
     };
-  }
-
-  /**
-   * ✍️ Signer électroniquement un document existant
-   */
-  private async signDocument(
-    userId: string,
-    originalUrl: string,
-    type: DocumentType,
-    annee: string,
-    documentRequestId: string,
-  ): Promise<{ fileUrl: string; fileName: string }> {
-    const user = await this.userModel.findById(userId);
-    if (!user) {
-      throw new NotFoundException('Utilisateur introuvable');
-    }
-
-    // Générer le nom du fichier signé
-    const timestamp = Date.now();
-    const fileName = `${type}_${user.studentId || userId}_${annee}_signed_${timestamp}.pdf`;
-    
-    // Simuler la signature électronique du document existant
-    // Dans un vrai projet, vous utiliseriez une API de signature électronique
-    // qui prend l'URL du document original et retourne l'URL du document signé
-    const baseUrl = process.env.BASE_URL || 'http://localhost:3000';
-    const fileUrl = `${baseUrl}/api/documents/signed/${fileName}`;
-
-    // Logique de signature selon le type
-    console.log(`Signature du document ${type} pour ${user.firstName} ${user.lastName}`);
-    console.log(`Document original: ${originalUrl}`);
-    console.log(`Document signé: ${fileUrl}`);
-
-    // Ici, vous pouvez appeler une API de signature électronique réelle
-    // Par exemple : await this.signatureService.signDocument(originalUrl, userId);
-
-    return { fileUrl, fileName };
   }
 
   /**

@@ -43,14 +43,17 @@ export class DocumentRequestController {
   }
 
   /**
-   * 📝 Créer une demande de document, générer et signer automatiquement
+   * 📝 Créer une demande de document et récupérer l'URL du fichier existant
    */
   @Post()
   @Roles(Role.User, Role.Admin)
   @ApiOperation({ 
-    summary: 'Créer une demande de document (le fichier est généré et signé automatiquement)' 
+    summary: 'Créer une demande de document et récupérer l\'URL du fichier existant selon type et année' 
   })
-  @ApiResponse({ status: 201, description: 'Document créé et signé avec succès' })
+  @ApiResponse({ 
+    status: 201, 
+    description: 'Demande créée avec succès. Retourne la demande et l\'URL du fichier (null si non trouvé)' 
+  })
   @ApiResponse({ status: 401, description: 'Non authentifié' })
   create(@Request() req: any, @Body() createDto: CreateDocumentRequestDto) {
     return this.documentRequestService.create(req.user.userId, createDto);

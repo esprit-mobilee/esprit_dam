@@ -64,27 +64,10 @@ export class CreateDocumentRequestDto {
   type: DocumentType;
 
   @ApiProperty({
-    example: '2024-2025',
+    example: '2024',
     description: 'Année académique',
   })
   @IsString()
   @IsNotEmpty()
   annee: string;
-
-  @ApiProperty({
-    example: 'https://example.com/document.pdf',
-    description: 'URL du fichier du document',
-  })
-  @IsString()
-  @IsNotEmpty()
-  fileUrl: string;
-
-  @ApiProperty({
-    description: 'Données du formulaire selon le type de document',
-    required: false,
-  })
-  @IsOptional()
-  @ValidateNested()
-  @Type(() => Object)
-  formData?: AttestationFormDto | ReleveFormDto | ConventionFormDto;
 }
