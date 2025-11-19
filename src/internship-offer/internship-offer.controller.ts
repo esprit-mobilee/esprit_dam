@@ -62,7 +62,7 @@ export class InternshipOfferController {
   @Roles(Role.Admin)
   @ApiOperation({ summary: 'Créer une nouvelle offre de stage (admin)' })
   @UseInterceptors(
-    FileInterceptor('logo', {
+    FileInterceptor('image', {
       storage: diskStorage({
         destination: './uploads/logos',
         filename: (req, file, cb) => {
@@ -99,7 +99,7 @@ export class InternshipOfferController {
   @Roles(Role.Admin)
   @ApiOperation({ summary: 'Modifier une offre par id (admin)' })
   @UseInterceptors(
-    FileInterceptor('logo', {
+    FileInterceptor('image', {
       storage: diskStorage({
         destination: './uploads/logos',
         filename: (req, file, cb) => {
