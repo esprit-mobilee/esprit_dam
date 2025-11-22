@@ -26,7 +26,7 @@ export class DocumentRequestService {
         return {
           fields: [
             { name: 'annee', type: 'string', label: 'Année académique', required: true },
-            { name: 'raison', type: 'string', label: 'Raison de la demande', required: false },
+            
           ],
         };
       
@@ -34,7 +34,7 @@ export class DocumentRequestService {
         return {
           fields: [
             { name: 'annee', type: 'string', label: 'Année académique', required: true },
-            { name: 'semestre', type: 'string', label: 'Semestre', required: false },
+          
           ],
         };
       
