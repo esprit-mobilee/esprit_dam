@@ -34,7 +34,7 @@ export class DocumentRequestController {
    * 📋 Récupérer les champs de formulaire selon le type de document
    */
   @Get('form-fields/:type')
- @Roles(Role.User, Role.Admin)
+ @Roles(Role.Student, Role.Admin)
   @ApiOperation({ summary: 'Récupérer les champs de formulaire selon le type de document' })
   @ApiParam({ name: 'type', enum: ['attestation', 'relevé', 'convention'], description: 'Type de document' })
   @ApiResponse({ status: 200, description: 'Champs de formulaire pour le type spécifié' })
@@ -46,7 +46,7 @@ export class DocumentRequestController {
    * 📝 Créer une demande de document et récupérer l'URL du fichier existant
    */
   @Post()
-  @Roles(Role.User, Role.Admin)
+  @Roles(Role.Student, Role.Admin)
   @ApiOperation({ 
     summary: 'Créer une demande de document et récupérer l\'URL du fichier existant selon type et année' 
   })
@@ -63,7 +63,7 @@ export class DocumentRequestController {
    * 📋 Récupérer toutes les demandes de l'utilisateur
    */
   @Get()
-  @Roles(Role.User, Role.Admin)
+  @Roles(Role.Student, Role.Admin)
   @ApiOperation({ summary: 'Récupérer toutes mes demandes de documents' })
   @ApiResponse({ status: 200, description: 'Liste des demandes' })
   findAll(@Request() req: any) {
@@ -74,7 +74,7 @@ export class DocumentRequestController {
    * 🔍 Récupérer une demande par ID
    */
   @Get('request/:id')
-  @Roles(Role.User, Role.Admin)
+  @Roles(Role.Student, Role.Admin)
   @ApiOperation({ summary: 'Récupérer une demande par ID' })
   @ApiParam({ name: 'id', description: 'ID de la demande' })
   @ApiResponse({ status: 200, description: 'Détails de la demande' })
@@ -87,18 +87,18 @@ export class DocumentRequestController {
    * 📥 Récupérer toutes les URLs de fichiers de l'utilisateur
    */
   @Get('files')
-  @Roles(Role.User, Role.Admin)
+  @Roles(Role.Student, Role.Admin)
   @ApiOperation({ summary: 'Récupérer toutes les URLs de mes fichiers' })
   @ApiResponse({ status: 200, description: 'Liste des fichiers avec URLs' })
   getFileUrls(@Request() req: any) {
     return this.documentRequestService.getFileUrlByUserId(req.user.userId);
-  }
+  } 
 
   /**
    * 📥 Récupérer l'URL d'un fichier par son ID
    */
   @Get('files/:fileId')
-  @Roles(Role.User, Role.Admin)
+  @Roles(Role.Student, Role.Admin)
   @ApiOperation({ summary: 'Récupérer l\'URL d\'un fichier par son ID' })
   @ApiParam({ name: 'fileId', description: 'ID du fichier' })
   @ApiResponse({ status: 200, description: 'Informations du fichier avec URL' })
@@ -111,7 +111,7 @@ export class DocumentRequestController {
    * 📥 Récupérer l'URL d'un fichier par l'ID de la demande
    */
   @Get('request/:requestId/file')
-  @Roles(Role.User, Role.Admin)
+  @Roles(Role.Student, Role.Admin)
   @ApiOperation({ summary: 'Récupérer l\'URL d\'un fichier par l\'ID de la demande' })
   @ApiParam({ name: 'requestId', description: 'ID de la demande' })
   @ApiResponse({ status: 200, description: 'Informations du fichier avec URL' })
@@ -124,7 +124,7 @@ export class DocumentRequestController {
    * 📊 Obtenir les statistiques des demandes
    */
   @Get('stats')
-  @Roles(Role.User, Role.Admin)
+  @Roles(Role.Student, Role.Admin)
   @ApiOperation({ summary: 'Obtenir les statistiques de mes demandes' })
   @ApiResponse({ status: 200, description: 'Statistiques des demandes' })
   getStats(@Request() req: any) {
@@ -135,7 +135,7 @@ export class DocumentRequestController {
    * ❌ Supprimer une demande et son fichier associé
    */
   @Delete(':id')
-  @Roles(Role.User, Role.Admin)
+  @Roles(Role.Student, Role.Admin)
   @ApiOperation({ summary: 'Supprimer une demande et son fichier associé' })
   @ApiParam({ name: 'id', description: 'ID de la demande' })
   @ApiResponse({ status: 200, description: 'Demande supprimée' })

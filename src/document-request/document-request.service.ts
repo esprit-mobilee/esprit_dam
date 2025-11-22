@@ -53,39 +53,42 @@ export class DocumentRequestService {
     }
   }
 
-  /**
-   * 📝 Créer une demande de document et récupérer l'URL du fichier existant
-   */
   async create(userId: string, createDto: CreateDocumentRequestDto): Promise<{ 
-    documentRequest: DocumentRequest; 
-    fileUrl: string | null;
-  }> {
-    // Vérifier que l'utilisateur existe
-    const user = await this.userModel.findById(userId);
-    if (!user) {
-      throw new NotFoundException('Utilisateur introuvable');
-    }
+  documentRequest: DocumentRequest; 
+  fileUrl: string | null;
+}> {
+  // Vérifier que l'utilisateur existe
+  const user = await this.userModel.findById(userId);
+  if (!user) throw new NotFoundException('Utilisateur introuvable');
 
-    // 1️⃣ Créer la demande de document
-    const documentRequest = await this.documentRequestModel.create({
-      userId: new Types.ObjectId(userId),
-      type: createDto.type,
-      annee: createDto.annee,
-    });
+  // 1️⃣ Créer la demande de document
+  const documentRequest = await this.documentRequestModel.create({
+    userId: new Types.ObjectId(userId),
+    type: createDto.type,
+    annee: createDto.annee,
+  });
 
-    // 2️⃣ Chercher le fichier existant dans DocumentFile
-    const documentFile = await this.documentFileModel.findOne({
-      userId: new Types.ObjectId(userId),
-      type: createDto.type,
-      annee: createDto.annee,
-    });
+  // 2️⃣ Chercher le fichier existant dans DocumentFile
+  const documentFile = await this.documentFileModel.findOne({
+    userId: new Types.ObjectId(userId),
+    type: createDto.type,
+    annee: createDto.annee,
+  });
 
-    // 3️⃣ Retourner la demande + l'URL trouvée (ou null si non trouvé)
-    return {
-      documentRequest: await this.findOne(String(documentRequest._id)),
-      fileUrl: documentFile?.url || null,
-    };
-  }
+  // 2️⃣a️⃣ Lier le documentFile à la nouvelle documentRequest
+  if (documentFile) {
+  documentFile.documentRequestId = documentRequest._id as Types.ObjectId;
+  await documentFile.save();
+}
+
+
+  // 3️⃣ Retourner la demande + l'URL trouvée
+  return {
+    documentRequest: await this.findOne(String(documentRequest._id)),
+    fileUrl: documentFile?.url || null,
+  };
+}
+
 
   /**
    * 📋 Récupérer toutes les demandes d'un utilisateur
@@ -193,7 +196,7 @@ export class DocumentRequestService {
     
     return { message: 'Demande de document supprimée avec succès' };
   }
-
+   
   /**
    * 📊 Obtenir les statistiques des demandes d'un utilisateur
    */
@@ -239,4 +242,29 @@ export class DocumentRequestService {
     };
   }
 
+
+/**
+ * 📥 Récupérer un fichier selon userId, type et année
+ */
+async getFileByUserTypeAndYear(
+  userId: string,
+  type: DocumentType,
+  annee: string
+): Promise<DocumentFile> {
+  const file = await this.documentFileModel.findOne({
+    userId: new Types.ObjectId(userId),
+    type,
+    annee
+  }).populate('userId', 'firstName lastName email studentId');
+
+  if (!file) {
+    throw new NotFoundException(
+      `Fichier pour l'utilisateur ${userId}, type ${type}, année ${annee} introuvable`
+    );
+  }
+
+  return file;
 }
+
+
+  }
