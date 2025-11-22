@@ -7,7 +7,7 @@ import * as os from 'os';
 import { join } from 'path';
 import { NestExpressApplication } from '@nestjs/platform-express';
 
-// 🔎 récupère automatiquement l'adresse IPv4 locale (Wi-Fi)
+// 🔎 récupère automatiquement l'adresse IPv4 locale
 function getLocalIp(): string {
   const interfaces = os.networkInterfaces();
   for (const name of Object.keys(interfaces)) {
@@ -23,20 +23,20 @@ function getLocalIp(): string {
 }
 
 async function bootstrap() {
-  // ⬅️ on crée l'app en NestExpress pour pouvoir servir des fichiers statiques
+  // ⚠ obligatoire pour servir les fichiers (pdf, images…)
   const app = await NestFactory.create<NestExpressApplication>(AppModule);
 
-  // ✅ CORS
+  // ---------- CORS ----------
   app.enableCors({
     origin: '*',
     methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH'],
     allowedHeaders: ['Content-Type', 'Authorization'],
   });
 
-  // ✅ Préfixe global
+  // ---------- Préfix global ----------
   app.setGlobalPrefix('api');
 
-  // ✅ Validation DTO
+  // ---------- VALIDATION PIPE ----------
   app.useGlobalPipes(
     new ValidationPipe({
       whitelist: true,
@@ -45,21 +45,21 @@ async function bootstrap() {
     }),
   );
 
-  // ✅ Filtres globaux
+  // ---------- GLOBAL EXCEPTION FILTER ----------
   app.useGlobalFilters(new AllExceptionsFilter());
 
-  // ✅ servir les fichiers uploadés (logos, etc.)
-  // -> un logo sauvegardé dans ./uploads/logos/xxx.png sera dispo sur
-  // http://IP:3000/uploads/logos/xxx.png
+  // ---------- SERVIR LES FICHIERS UPLOADÉS ----------
+  // contient : /uploads/logos, /uploads/cv, /uploads/events …
+  // accessible depuis mobile : http://IP:3000/uploads/xxx
   app.useStaticAssets(join(__dirname, '..', 'uploads'), {
-    prefix: '/uploads/',
+    prefix: '/uploads/', // important : le slash final
   });
 
-  // ✅ Swagger
+  // ---------- SWAGGER ----------
   const config = new DocumentBuilder()
     .setTitle('API ESPRIT Connect')
     .setDescription(
-      'Documentation officielle de l’API ESPRIT Connect (Clubs, Étudiants, Administration, Authentification)',
+      `Documentation API (Clubs, Événements, Stages, Applications, Auth, Administration)`,
     )
     .setVersion('1.0')
     .addBearerAuth(
@@ -68,7 +68,8 @@ async function bootstrap() {
         scheme: 'bearer',
         bearerFormat: 'JWT',
         name: 'Authorization',
-        description: 'Entrez votre token JWT au format : Bearer <votre_token>',
+        description:
+          'Token JWT — utilisez : Bearer <votre_token>',
         in: 'header',
       },
       'access-token',
@@ -81,16 +82,17 @@ async function bootstrap() {
     customCss: '.swagger-ui .topbar { display: none }',
   });
 
+  // ---------- START SERVER ----------
   const port = process.env.PORT ?? 3000;
   const localIp = getLocalIp();
 
   await app.listen(port, '0.0.0.0');
 
-  console.log('✅ ValidationPipe & AllExceptionsFilter activés');
-  console.log(`🚀 Serveur en ligne (PC) : http://localhost:${port}/api`);
-  console.log(`📚 Swagger (PC) : http://localhost:${port}/api-docs`);
-  console.log(`🌐 Depuis mobile : http://${localIp}:${port}/api`);
-  console.log(`📚 Swagger (réseau) : http://${localIp}:${port}/api-docs`);
+  console.log('🚀 Serveur démarré avec validation DTO et filtres globaux');
+  console.log(`🌐 Local   : http://localhost:${port}/api`);
+  console.log(`📱 Mobile  : http://${localIp}:${port}/api`);
+  console.log(`📚 Swagger : http://${localIp}:${port}/api-docs`);
+  console.log(`📁 Uploads accessibles sur : http://${localIp}:${port}/uploads/...`);
 }
 
 bootstrap();

@@ -1,9 +1,7 @@
-// src/internship-offer/internship-offer.controller.ts
 import {
   Controller,
   Get,
   Post,
-  Body,
   Param,
   Delete,
   Put,
@@ -13,19 +11,13 @@ import {
   UploadedFile,
   Req,
 } from '@nestjs/common';
-import {
-  ApiTags,
-  ApiOperation,
-  ApiBearerAuth,
-} from '@nestjs/swagger';
+import { ApiTags, ApiOperation, ApiBearerAuth } from '@nestjs/swagger';
 import { AuthGuard } from '@nestjs/passport';
 import { RolesGuard } from '../auth/guards/roles.guard';
 import { Roles } from '../auth/decorators/roles.decorator';
 import { Role } from '../auth/enums/role.enum';
 
 import { InternshipOfferService } from './internship-offer.service';
-import { CreateInternshipOfferDto } from './dto/create-internship-offer.dto';
-import { UpdateInternshipOfferDto } from './dto/update-internship-offer.dto';
 import { InternshipOffer } from './schemas/internship-offer.schema';
 
 import { FileInterceptor } from '@nestjs/platform-express';
@@ -39,7 +31,9 @@ import { extname } from 'path';
 export class InternshipOfferController {
   constructor(private readonly internshipService: InternshipOfferService) {}
 
-  // ============ LECTURE (étudiant + admin) ============
+  // ======================================================
+  // =                GET ALL (Student + Admin)           =
+  // ======================================================
   @Get()
   @UseGuards(AuthGuard('jwt'))
   @ApiOperation({ summary: 'Liste de toutes les offres' })
@@ -56,7 +50,9 @@ export class InternshipOfferController {
     return offer;
   }
 
-  // ============ CRÉATION (admin) ============
+  // ======================================================
+  // =                      CREATE (ADMIN)                 =
+  // ======================================================
   @Post()
   @UseGuards(AuthGuard('jwt'), RolesGuard)
   @Roles(Role.Admin)
@@ -65,35 +61,49 @@ export class InternshipOfferController {
     FileInterceptor('image', {
       storage: diskStorage({
         destination: './uploads/logos',
-        filename: (req, file, cb) => {
+        filename: (_, file, cb) => {
           const unique = uuid();
           cb(null, unique + extname(file.originalname));
         },
       }),
     }),
   )
-  async create(
-    @Req() req,
-    @UploadedFile() file?: Express.Multer.File,
-  ): Promise<InternshipOffer> {
-    const dto: any = req.body; // ✅ lit les champs du body, même en multipart
+  async create(@Req() req, @UploadedFile() file?: Express.Multer.File): Promise<InternshipOffer> {
+    const dto: any = req.body;
+
     console.log('🧾 DTO REÇU =>', dto);
     console.log('📎 FICHIER =>', file?.originalname);
 
-    // ✅ Nettoyage et conversion
+    // ------ Gestion du logo ------
     if (file) dto.logoUrl = `/uploads/logos/${file.filename}`;
+
+    // ------ Conversions obligatoires ------
     if (dto.duration) dto.duration = Number(dto.duration);
     if (dto.salary) dto.salary = Number(dto.salary);
 
-    // ✅ Validation minimale
+    // ------ NEW : Convertir tags en array ------
+    if (dto.tags && typeof dto.tags === 'string') {
+      dto.tags = dto.tags.split(',').map((t) => t.trim());
+    }
+
+    // ------ NEW : Convertir startDate ------
+    if (dto.startDate) {
+      dto.startDate = new Date(dto.startDate);
+    }
+
+    // ------ Validation minimale ------
     if (!dto.title || !dto.company || !dto.description) {
-      throw new NotFoundException('Champs obligatoires manquants (title, company, description)');
+      throw new NotFoundException(
+        'Champs obligatoires manquants (title, company, description)',
+      );
     }
 
     return this.internshipService.create(dto);
   }
 
-  // ============ MISE A JOUR PAR ID (admin) ============
+  // ======================================================
+  // =                      UPDATE BY ID                  =
+  // ======================================================
   @Put(':id')
   @UseGuards(AuthGuard('jwt'), RolesGuard)
   @Roles(Role.Admin)
@@ -102,7 +112,7 @@ export class InternshipOfferController {
     FileInterceptor('image', {
       storage: diskStorage({
         destination: './uploads/logos',
-        filename: (req, file, cb) => {
+        filename: (_, file, cb) => {
           const unique = uuid();
           cb(null, unique + extname(file.originalname));
         },
@@ -116,14 +126,29 @@ export class InternshipOfferController {
   ): Promise<InternshipOffer> {
     const cleanId = id.trim();
     const dto: any = req.body;
+
     console.log('✏️ DTO UPDATE =>', dto);
     console.log('📎 FILE =>', file?.originalname);
 
+    // ------ logo ------
     if (file) dto.logoUrl = `/uploads/logos/${file.filename}`;
+
+    // ------ conversions ------
     if (dto.duration) dto.duration = Number(dto.duration);
     if (dto.salary) dto.salary = Number(dto.salary);
 
+    // ------ tags ------
+    if (dto.tags && typeof dto.tags === 'string') {
+      dto.tags = dto.tags.split(',').map((t) => t.trim());
+    }
+
+    // ------ startDate ------
+    if (dto.startDate) {
+      dto.startDate = new Date(dto.startDate);
+    }
+
     const updated = await this.internshipService.update(cleanId, dto);
+
     if (!updated) {
       console.warn(`⚠️ Stage non trouvé pour l'id ${cleanId}`);
       throw new NotFoundException('Offre non trouvée');
@@ -131,7 +156,9 @@ export class InternshipOfferController {
     return updated;
   }
 
-  // ============ MISE A JOUR PAR TITRE (admin) ============
+  // ======================================================
+  // =                  UPDATE BY TITLE (ADMIN)           =
+  // ======================================================
   @Put('by-title/:title')
   @UseGuards(AuthGuard('jwt'), RolesGuard)
   @Roles(Role.Admin)
@@ -140,7 +167,7 @@ export class InternshipOfferController {
     FileInterceptor('logo', {
       storage: diskStorage({
         destination: './uploads/logos',
-        filename: (req, file, cb) => {
+        filename: (_, file, cb) => {
           const unique = uuid();
           cb(null, unique + extname(file.originalname));
         },
@@ -154,21 +181,35 @@ export class InternshipOfferController {
   ): Promise<InternshipOffer> {
     const cleanTitle = title.trim();
     const dto: any = req.body;
+
     console.log('✏️ UPDATE BY TITLE =>', dto);
 
     if (file) dto.logoUrl = `/uploads/logos/${file.filename}`;
+
     if (dto.duration) dto.duration = Number(dto.duration);
     if (dto.salary) dto.salary = Number(dto.salary);
 
+    if (dto.tags && typeof dto.tags === 'string') {
+      dto.tags = dto.tags.split(',').map((t) => t.trim());
+    }
+
+    if (dto.startDate) {
+      dto.startDate = new Date(dto.startDate);
+    }
+
     const updated = await this.internshipService.updateByTitle(cleanTitle, dto);
+
     if (!updated) {
       console.warn(`⚠️ Stage non trouvé pour le titre "${cleanTitle}"`);
       throw new NotFoundException('Offre non trouvée');
     }
+
     return updated;
   }
 
-  // ============ SUPPRESSION (admin) ============
+  // ======================================================
+  // =                  DELETE (ADMIN)                    =
+  // ======================================================
   @Delete(':id')
   @UseGuards(AuthGuard('jwt'), RolesGuard)
   @Roles(Role.Admin)
@@ -176,6 +217,7 @@ export class InternshipOfferController {
   async delete(@Param('id') id: string): Promise<{ message: string }> {
     const deleted = await this.internshipService.delete(id.trim());
     if (!deleted) throw new NotFoundException('Offre non trouvée');
+
     return { message: 'Offre supprimée avec succès' };
   }
 }

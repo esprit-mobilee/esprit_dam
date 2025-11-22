@@ -1,11 +1,15 @@
 // src/application/application.controller.ts
-import { Controller, Get, Post, Body, Param, Delete, Patch } from '@nestjs/common';
+import { Controller, Get, Post, Body, Param, Delete,Patch,
+  UploadedFile ,UseInterceptors } from '@nestjs/common';
 import { ApiTags, ApiOperation } from '@nestjs/swagger';
 import { ApplicationService } from './application.service';
 import { CreateApplicationDto } from './dto/create-application.dto';
 import { UpdateApplicationDto } from './dto/update-application.dto';
 import { Application } from './schemas/application.schema';
-
+import { FileInterceptor } from '@nestjs/platform-express';
+import { diskStorage } from 'multer';
+import { v4 as uuid } from 'uuid';
+import { extname } from 'path';
 @ApiTags('Applications')
 @Controller('applications')
 export class ApplicationController {
@@ -19,7 +23,42 @@ export class ApplicationController {
   create(@Body() dto: CreateApplicationDto): Promise<Application> {
     return this.applicationService.create(dto);
   }
+ // ---------- UPLOAD PDF + CREATE APPLICATION ----------
+@Post('upload')
+@UseInterceptors(
+  FileInterceptor('cv', {
+    storage: diskStorage({
+      destination: './uploads/cv',
+      filename: (req, file, cb) => {
+        const uniqueName = uuid() + extname(file.originalname);
+        cb(null, uniqueName);
+      },
+    }),
+  }),
+)
+async uploadCvAndCreate(
+  @UploadedFile() file: Express.Multer.File,
+  @Body() body: any,
+) {
+  if (!file) {
+    return { error: 'No file uploaded' };
+  }
 
+  const fileUrl = `/uploads/cv/${file.filename}`;
+
+  // Construire un vrai DTO pour créer la candidature
+  const createDto: CreateApplicationDto = {
+    userId: body.userId,
+    internshipId: body.internshipId,
+    cvUrl: fileUrl,               // le fichier uploadé ⬅️
+    coverLetter: body.coverLetter ?? '',
+  };
+
+  // Création dans MongoDB
+  const created = await this.applicationService.create(createDto);
+
+  return created; // Swift peut décoder Application directement
+}
   // ---------- READ / UPDATE / DELETE standards (par _id MongoDB) ----------
   @Get()
   @ApiOperation({ summary: 'Afficher toutes les candidatures' })
