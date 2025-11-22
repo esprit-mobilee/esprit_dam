@@ -18,6 +18,7 @@ export class ClubsService {
   assignPresident(clubId: string, userId: string) {
     throw new Error('Method not implemented.');
   }
+
   constructor(
     @InjectModel(Club.name)
     private readonly clubModel: Model<ClubDocument>,
@@ -27,9 +28,14 @@ export class ClubsService {
 
   // --------------------------------------------------
   // CREATE (admin)
-  // accepts president as: Mongo _id  OR  identifiant (ex: "PR001")
+  // president: ObjectId or identifiant
+  // tags: "robotique, innovation" -> ["robotique","innovation"]
+  // image: optional file
   // --------------------------------------------------
-  async create(dto: CreateClubDto): Promise<Club> {
+  async create(
+    dto: CreateClubDto,
+    file?: Express.Multer.File,
+  ): Promise<Club> {
     let presidentObjectId: Types.ObjectId | null = null;
 
     if (dto.president) {
@@ -37,7 +43,7 @@ export class ClubsService {
         // case 1: real ObjectId
         presidentObjectId = new Types.ObjectId(dto.president);
       } else {
-        // case 2: treat as user.identifiant (PR001, ST12345, …)
+        // case 2: identifiant (PR001, ST12345, …)
         const user = await this.userModel
           .findOne({ identifiant: dto.president })
           .exec();
@@ -50,14 +56,24 @@ export class ClubsService {
       }
     }
 
+    const imageUrl = file ? `/uploads/clubs/${file.filename}` : null;
+
+    const tagsArray = dto.tags
+      ? dto.tags
+          .split(',')
+          .map((t) => t.trim())
+          .filter((t) => t.length > 0)
+      : [];
+
     const club = await this.clubModel.create({
       name: dto.name,
       description: dto.description ?? '',
       president: presidentObjectId,
-      tags: dto.tags ?? [],
+      tags: tagsArray,
+      imageUrl,
     });
 
-    // sync user.presidentOf if a president was set
+    // optionnel: sync président côté user
     if (presidentObjectId) {
       await this.userModel.updateOne(
         { _id: presidentObjectId },
@@ -97,9 +113,12 @@ export class ClubsService {
 
   // --------------------------------------------------
   // UPDATE (admin)
-  // president can be _id or identifiant too
   // --------------------------------------------------
-  async update(id: string, dto: UpdateClubDto): Promise<Club> {
+  async update(
+    id: string,
+    dto: UpdateClubDto,
+    file?: Express.Multer.File,
+  ): Promise<Club> {
     const club = await this.clubModel.findById(id);
     if (!club) {
       throw new NotFoundException('Club introuvable');
@@ -118,16 +137,26 @@ export class ClubsService {
           );
         }
         club.president = user._id as Types.ObjectId;
-
-        // reflect on user
         user.presidentOf = club._id as Types.ObjectId;
         await user.save();
       }
     }
 
+    if (file) {
+      club.imageUrl = `/uploads/clubs/${file.filename}`;
+    }
+
     if (dto.name !== undefined) club.name = dto.name;
     if (dto.description !== undefined) club.description = dto.description;
-    if (dto.tags !== undefined) club.tags = dto.tags;
+
+    if (dto.tags !== undefined) {
+      club.tags = dto.tags
+        ? dto.tags
+            .split(',')
+            .map((t) => t.trim())
+            .filter((t) => t.length > 0)
+        : [];
+    }
 
     await club.save();
     return this.findOne(id);
@@ -142,7 +171,7 @@ export class ClubsService {
       throw new NotFoundException('Club introuvable');
     }
 
-    // detach president
+    // détacher le président
     if (club.president) {
       await this.userModel.updateOne(
         { _id: club.president },
@@ -150,7 +179,7 @@ export class ClubsService {
       );
     }
 
-    // detach members
+    // détacher les membres
     await this.userModel.updateMany(
       { clubs: club._id },
       { $pull: { clubs: club._id } },
@@ -161,10 +190,8 @@ export class ClubsService {
   }
 
   // --------------------------------------------------
-  // PRESIDENT ACTIONS used in controller
+  // PRESIDENT ACTIONS
   // --------------------------------------------------
-
-  // POST /clubs/:clubId/join/:userId
   async joinClub(clubId: string, userId: string) {
     const club = await this.clubModel.findById(clubId);
     if (!club) throw new NotFoundException('Club introuvable');
@@ -188,7 +215,6 @@ export class ClubsService {
     return this.findOne(clubId);
   }
 
-  // POST /clubs/:clubId/leave/:userId
   async leaveClub(clubId: string, userId: string) {
     const club = await this.clubModel.findById(clubId);
     if (!club) throw new NotFoundException('Club introuvable');
@@ -204,26 +230,53 @@ export class ClubsService {
     return this.findOne(clubId);
   }
 
-  // GET /clubs/:clubId/members
   async getMembers(clubId: string) {
     const club = await this.findOne(clubId);
     return club.members;
   }
 
-  // GET /clubs/admin/stats
+  // --------------------------------------------------
+  // STATS
+  // --------------------------------------------------
   async getStats() {
-    const clubs = await this.clubModel.find().populate('members').exec();
+    const clubs = (await this.clubModel
+      .find()
+      .populate('members')
+      .exec()) as ClubDocument[];
+
     const totalClubs = clubs.length;
-    const totalMembers = clubs.reduce((sum, c) => sum + c.members.length, 0);
-    const mostActive = clubs.sort(
-      (a, b) => b.members.length - a.members.length,
-    )[0];
+
+    let totalMembers = 0;
+    let mostActive: ClubDocument | null = null;
+
+    for (const club of clubs) {
+      const membersCount = Array.isArray(club.members)
+        ? club.members.length
+        : 0;
+
+      totalMembers += membersCount;
+
+      if (
+        !mostActive ||
+        membersCount >
+          (Array.isArray(mostActive.members)
+            ? mostActive.members.length
+            : 0)
+      ) {
+        mostActive = club;
+      }
+    }
 
     return {
       totalClubs,
       totalMembers,
       mostActiveClub: mostActive
-        ? { name: mostActive.name, members: mostActive.members.length }
+        ? {
+            name: mostActive.name,
+            members: Array.isArray(mostActive.members)
+              ? mostActive.members.length
+              : 0,
+          }
         : null,
     };
   }

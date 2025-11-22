@@ -10,22 +10,17 @@ export class Club extends Document {
   @Prop()
   description?: string;
 
-  // 👑 Président du club
   @Prop({ type: Types.ObjectId, ref: 'Utilisateur', default: null })
   president: Types.ObjectId | null;
 
-  // 👥 Liste des membres
   @Prop({ type: [{ type: Types.ObjectId, ref: 'Utilisateur' }], default: [] })
   members: Types.ObjectId[];
 
   @Prop({ type: [String], default: [] })
   tags: string[];
 
-  @Prop({ default: Date.now })
-  foundedAt: Date;
-
-  @Prop({ default: true })
-  isActive: boolean;
+  @Prop()
+  imageUrl?: string;
 }
 
 export type ClubDocument = Club & Document;

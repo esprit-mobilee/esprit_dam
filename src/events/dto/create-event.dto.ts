@@ -1,4 +1,10 @@
-import { IsString, IsNotEmpty, IsOptional, IsDateString, IsMongoId } from 'class-validator';
+import {
+  IsString,
+  IsNotEmpty,
+  IsOptional,
+  IsDateString,
+  IsMongoId,
+} from 'class-validator';
 import { ApiProperty } from '@nestjs/swagger';
 
 export class CreateEventDto {
@@ -21,7 +27,10 @@ export class CreateEventDto {
   @IsString()
   location?: string;
 
-  @ApiProperty({ example: '64a8b19d6e3218a7f934a9f1', description: 'Organizer (User ID)' })
+  @ApiProperty({
+    example: '64a8b19d6e3218a7f934a9f1',
+    description: 'Organizer (User ID)',
+  })
   @IsMongoId()
   @IsNotEmpty()
   organizerId: string;
@@ -30,4 +39,13 @@ export class CreateEventDto {
   @IsOptional()
   @IsString()
   category?: string;
+
+  @ApiProperty({
+    type: 'string',
+    format: 'binary',
+    required: false,
+    description: 'Affiche / image de l’événement',
+  })
+  @IsOptional()
+  image?: any;
 }

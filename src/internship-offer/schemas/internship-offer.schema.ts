@@ -23,9 +23,32 @@ export class InternshipOffer {
 
   @Prop()
   salary?: number;
+  @Prop({ default: 0 })
+applicationsCount: number;
+
+@Prop({ default: 1 })
+positionsAvailable: number;
 
   @Prop()
   logoUrl?: string; // <-- nouveau champ pour le logo
+  @Prop([String])
+  tags?: string[];
+
+  @Prop()
+  internshipType?: string;
+
+ @Prop()
+ procedure?: string;
+
+ @Prop()
+ interviewProcess?: string;
+
+ @Prop()
+ startDate?: Date;
+
+ @Prop()
+ interviewDetails?: string;
+
 }
 
 export const InternshipOfferSchema = SchemaFactory.createForClass(InternshipOffer);

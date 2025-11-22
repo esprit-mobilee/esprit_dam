@@ -1,7 +1,6 @@
-// src/clubs/dto/update-club.dto.ts
 import { PartialType, ApiPropertyOptional } from '@nestjs/swagger';
 import { CreateClubDto } from './create-club.dto';
-import { IsOptional, IsString, IsArray } from 'class-validator';
+import { IsOptional, IsString } from 'class-validator';
 
 export class UpdateClubDto extends PartialType(CreateClubDto) {
   @ApiPropertyOptional({
@@ -11,8 +10,19 @@ export class UpdateClubDto extends PartialType(CreateClubDto) {
   @IsString()
   president?: string;
 
-  @ApiPropertyOptional({ type: [String] })
+  @ApiPropertyOptional({
+    example: 'robotique, innovation',
+    description: 'Liste des tags séparés par des virgules',
+  })
   @IsOptional()
-  @IsArray()
-  tags?: string[];
+  @IsString()
+  tags?: string;          // 👈 string, pour matcher le service
+
+  @ApiPropertyOptional({
+    type: 'string',
+    format: 'binary',
+    description: 'Nouveau logo / nouvelle image du club',
+  })
+  @IsOptional()
+  image?: any;
 }

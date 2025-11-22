@@ -21,6 +21,9 @@ export class Event extends Document {
 
   @Prop()
   category?: string;
+
+  @Prop()
+  imageUrl?: string;
 }
 
 export type EventDocument = Event & Document;
