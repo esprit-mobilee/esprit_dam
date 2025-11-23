@@ -12,7 +12,7 @@ import { Role } from '../enums/role.enum';
 export class SignupDto {
   @ApiProperty({
     example: 'ST12345',
-    description: "Identifiant de connexion (ce que l’app Android va utiliser)",
+    description: "Identifiant de connexion (utilisé dans l'application mobile)",
     required: false,
   })
   @IsOptional()
@@ -35,7 +35,7 @@ export class SignupDto {
   email: string;
 
   @ApiProperty({
-    description: 'Mot de passe de connexion (min 6 caractères)',
+    description: 'Mot de passe (min 6 caractères)',
     example: 'P@ssword123',
   })
   @IsString()

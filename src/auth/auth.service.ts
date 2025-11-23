@@ -5,7 +5,7 @@ import {
 } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
 import { InjectModel } from '@nestjs/mongoose';
-import { Model, Types } from 'mongoose';
+import { Model } from 'mongoose';
 import * as bcrypt from 'bcrypt';
 import { v4 as uuidv4 } from 'uuid';
 import { SignupDto } from './dtos/signup.dto';
@@ -29,9 +29,9 @@ export class AuthService {
     private readonly jwtService: JwtService,
   ) {}
 
-  // ----------------------------
-  // 📝 SIGNUP
-  // ----------------------------
+  // -------------------------------------------------------
+  // SIGNUP
+  // -------------------------------------------------------
   async signUp(signupData: SignupDto) {
     const {
       email,
@@ -42,13 +42,11 @@ export class AuthService {
       classGroup,
     } = signupData;
 
-    // email unique
     const emailInUse = await this.utilisateurModel.findOne({ email });
     if (emailInUse) {
       throw new BadRequestException('Email déjà utilisé');
     }
 
-    // identifiant unique (si fourni)
     if (identifiant) {
       const identifiantInUse = await this.utilisateurModel.findOne({
         identifiant,
@@ -62,21 +60,23 @@ export class AuthService {
 
     const newUser = await this.utilisateurModel.create({
       identifiant,
-      firstName: name,         // on stocke quand même
+      firstName: name,
       lastName: '',
       email,
       password: hashedPassword,
       age: 0,
       classGroup: classGroup ?? null,
       role: role ?? Role.User,
+      presidentOf: null, // always null at signup
+      clubs: [],
     });
 
-    return { message: 'Utilisateur créé avec succès', userId: newUser._id };
+    return { message: 'Utilisateur créé avec succès', userId: String(newUser._id) };
   }
 
-  // ----------------------------
-  // 🔐 LOGIN
-  // ----------------------------
+  // -------------------------------------------------------
+  // LOGIN
+  // -------------------------------------------------------
   async login(credentials: LoginDto) {
     const { identifiant, password } = credentials;
 
@@ -97,36 +97,33 @@ export class AuthService {
       throw new UnauthorizedException('Identifiants incorrects');
     }
 
-    const userId: string = (
-      utilisateur._id as unknown as Types.ObjectId
-    ).toString();
-
+    const userId = String(utilisateur._id);
     const tokens = await this.generateUserTokens(userId, utilisateur.role);
 
-    // 👇 on construit un user "clean" pour Android
     const fullName =
       (utilisateur.firstName ?? '').trim().length > 0 ||
       (utilisateur.lastName ?? '').trim().length > 0
         ? `${utilisateur.firstName ?? ''} ${utilisateur.lastName ?? ''}`.trim()
-        : utilisateur.email; // fallback
+        : utilisateur.email;
 
     return {
       ...tokens,
       user: {
         id: userId,
-        name: fullName,                     // 👈 Android va lire ça
+        name: fullName,
         email: utilisateur.email,
         role: utilisateur.role,
         classGroup: utilisateur.classGroup ?? null,
         studentId: utilisateur.studentId ?? null,
+        presidentOf: utilisateur.presidentOf ? String(utilisateur.presidentOf) : null,
       },
       message: 'Connexion réussie',
     };
   }
 
-  // ----------------------------
-  // 🔎 ME (si tu l’utilises)
-  // ----------------------------
+  // -------------------------------------------------------
+  // AUTH /ME
+  // -------------------------------------------------------
   async me(userId: string) {
     const user = await this.utilisateurModel.findById(userId).lean();
     if (!user) {
@@ -140,23 +137,25 @@ export class AuthService {
         : user.email;
 
     return {
-      id: user._id.toString(),
-      name: fullName,                   // 👈 même format
+      id: String(user._id),
+      name: fullName,
       email: user.email,
       role: user.role,
       classGroup: user.classGroup ?? null,
       studentId: user.studentId ?? null,
+      presidentOf: user.presidentOf ? String(user.presidentOf) : null,
     };
   }
 
-  // ----------------------------
-  // JWT
-  // ----------------------------
+  // -------------------------------------------------------
+  // TOKENS
+  // -------------------------------------------------------
   async generateUserTokens(userId: string, role: Role) {
     const accessToken = this.jwtService.sign({ userId, role }, { expiresIn: '10h' });
     const refreshToken = uuidv4();
 
     await this.storeRefreshToken(refreshToken, userId);
+
     return { accessToken, refreshToken };
   }
 
@@ -189,6 +188,9 @@ export class AuthService {
     return this.generateUserTokens(String(token.userId), user.role);
   }
 
+  // -------------------------------------------------------
+  // CHANGE PASSWORD
+  // -------------------------------------------------------
   async changePassword(userId: string, oldPassword: string, newPassword: string) {
     const utilisateur = await this.utilisateurModel.findById(userId);
     if (!utilisateur) {

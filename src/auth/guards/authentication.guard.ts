@@ -26,6 +26,7 @@ export class AuthenticationGuard implements CanActivate {
       // ✅ Injecte les infos dans la requête
       request['user'] = {
         userId: payload.userId,
+        identifiant: payload.identifiant,
         role: payload.role,
       };
     } catch (error) {

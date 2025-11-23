@@ -1,10 +1,4 @@
-import {
-  IsString,
-  IsNotEmpty,
-  IsOptional,
-  IsDateString,
-  IsMongoId,
-} from 'class-validator';
+import { IsString, IsNotEmpty, IsOptional, IsDateString } from 'class-validator';
 import { ApiProperty } from '@nestjs/swagger';
 
 export class CreateEventDto {
@@ -20,7 +14,11 @@ export class CreateEventDto {
 
   @ApiProperty({ example: '2025-12-10T09:00:00Z' })
   @IsDateString()
-  date: Date;
+  startDate: Date;
+
+  @ApiProperty({ example: '2025-12-12T17:00:00Z' })
+  @IsDateString()
+  endDate: Date;
 
   @ApiProperty({ example: 'Amphitheater 1' })
   @IsOptional()
@@ -28,10 +26,10 @@ export class CreateEventDto {
   location?: string;
 
   @ApiProperty({
-    example: '64a8b19d6e3218a7f934a9f1',
-    description: 'Organizer (User ID)',
+    example: 'PR12345',
+    description: "Identifiant du président (login), pas l'ObjectId",
   })
-  @IsMongoId()
+  @IsString()
   @IsNotEmpty()
   organizerId: string;
 

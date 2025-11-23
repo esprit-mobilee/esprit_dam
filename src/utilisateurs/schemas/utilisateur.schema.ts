@@ -4,10 +4,11 @@ import { Role } from 'src/auth/enums/role.enum';
 
 @Schema({ timestamps: true })
 export class Utilisateur extends Document {
-  // identifiant de connexion (ST12345, PARENT001, PROF.AHMED, etc.)
+  // Identifiant de connexion (ST12345, PROF001, PARENT009…)
   @Prop({ unique: true, sparse: true })
   identifiant?: string;
 
+  // ID étudiant si applicable
   @Prop()
   studentId?: string;
 
@@ -26,22 +27,22 @@ export class Utilisateur extends Document {
   @Prop()
   avatar?: string;
 
-    // 👇👇 NEW: classe / groupe (ex: "4SIM4")
+  // Classe / groupe (pour étudiants)
   @Prop()
   classGroup?: string;
 
   @Prop({ required: true })
   password: string;
 
-  // on inclut ton nouveau rôle "parent"
+  // Roles simples et propres (option A)
   @Prop({ enum: Role, default: Role.User })
   role: Role;
 
-  // 👥 Liste des clubs dont l'utilisateur est membre
+  // Clubs dont l'utilisateur est membre
   @Prop({ type: [{ type: Types.ObjectId, ref: 'Club' }], default: [] })
   clubs: Types.ObjectId[];
 
-  // 👑 Club présidé (si role = President)
+  // Club dont il est président (si applicable)
   @Prop({ type: Types.ObjectId, ref: 'Club', default: null })
   presidentOf?: Types.ObjectId | null;
 }
