@@ -8,12 +8,16 @@ import { Reflector } from '@nestjs/core';
 import { Role } from '../enums/role.enum';
 import { ClubsService } from 'src/clubs/clubs.service';
 import { Types } from 'mongoose';
+import { InternshipOfferService } from 'src/internship-offer/internship-offer.service';
 
 @Injectable()
 export class RolesGuard implements CanActivate {
   constructor(
+    
     private readonly reflector: Reflector,
     private readonly clubsService: ClubsService,
+    
+
   ) {}
 
   async canActivate(context: ExecutionContext): Promise<boolean> {

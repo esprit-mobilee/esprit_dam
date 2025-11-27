@@ -7,6 +7,8 @@ import {
   Delete,
   Put,
   UseGuards,
+  UploadedFile,
+  UseInterceptors,
 } from '@nestjs/common';
 import { ClubsService } from './clubs.service';
 import { CreateClubDto } from './dto/create-club.dto';
@@ -14,14 +16,15 @@ import { UpdateClubDto } from './dto/update-club.dto';
 import {
   ApiTags,
   ApiOperation,
-  ApiParam,
-  ApiResponse,
   ApiBearerAuth,
+  ApiConsumes,
 } from '@nestjs/swagger';
 import { Roles } from 'src/auth/decorators/roles.decorator';
 import { Role } from 'src/auth/enums/role.enum';
 import { AuthenticationGuard } from 'src/auth/guards/authentication.guard';
 import { RolesGuard } from 'src/auth/guards/roles.guard';
+import { FileInterceptor } from '@nestjs/platform-express';
+import { multerOptions } from 'src/common/multer.config';
 
 @ApiTags('Clubs')
 @ApiBearerAuth('access-token')
@@ -30,28 +33,25 @@ import { RolesGuard } from 'src/auth/guards/roles.guard';
 export class ClubsController {
   constructor(private readonly clubsService: ClubsService) {}
 
-  // 👑 Admin — créer un club
   @Post()
   @Roles(Role.Admin)
-  @ApiOperation({ summary: 'Créer un nouveau club (Admin uniquement)' })
-  @ApiResponse({ status: 201, description: 'Club créé avec succès.' })
-  create(@Body() dto: CreateClubDto) {
-    return this.clubsService.create(dto);
+  @ApiOperation({ summary: 'Créer un nouveau club' })
+  @ApiConsumes('multipart/form-data')
+  @UseInterceptors(FileInterceptor('image', multerOptions('clubs')))
+  create(@UploadedFile() file: Express.Multer.File, @Body() dto: CreateClubDto) {
+    return this.clubsService.create(dto, file);
   }
 
-  // 👑 Admin — assigner un président
-  @Put(':clubId/president/:userId')
-  @Roles(Role.Admin)
-  @ApiOperation({ summary: 'Assigner un président à un club (Admin)' })
-  assignPresident(@Param('clubId') clubId: string, @Param('userId') userId: string) {
-    return this.clubsService.assignPresident(clubId, userId);
-  }
-
-  // 👑 Admin — update & delete
   @Put(':id')
   @Roles(Role.Admin)
-  update(@Param('id') id: string, @Body() dto: UpdateClubDto) {
-    return this.clubsService.update(id, dto);
+  @ApiConsumes('multipart/form-data')
+  @UseInterceptors(FileInterceptor('image', multerOptions('clubs')))
+  update(
+    @Param('id') id: string,
+    @UploadedFile() file: Express.Multer.File,
+    @Body() dto: UpdateClubDto,
+  ) {
+    return this.clubsService.update(id, dto, file);
   }
 
   @Delete(':id')
@@ -60,7 +60,6 @@ export class ClubsController {
     return this.clubsService.remove(id);
   }
 
-  // 📚 Tous — liste & détails
   @Get()
   findAll() {
     return this.clubsService.findAll();
@@ -71,7 +70,6 @@ export class ClubsController {
     return this.clubsService.findOne(id);
   }
 
-  // 🧑‍💼 Président — gérer les membres
   @Post(':clubId/join/:userId')
   @Roles(Role.President)
   joinClub(@Param('clubId') clubId: string, @Param('userId') userId: string) {
@@ -84,13 +82,11 @@ export class ClubsController {
     return this.clubsService.leaveClub(clubId, userId);
   }
 
-  // 👥 Voir les membres
   @Get(':clubId/members')
   getMembers(@Param('clubId') clubId: string) {
     return this.clubsService.getMembers(clubId);
   }
 
-  // 📊 Stats globales
   @Get('admin/stats')
   @Roles(Role.Admin)
   getStats() {

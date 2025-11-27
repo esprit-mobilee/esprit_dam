@@ -1,19 +1,35 @@
 import { ApiProperty } from '@nestjs/swagger';
-import { IsEmail, IsEnum, IsNotEmpty, IsOptional, IsString, MinLength } from 'class-validator';
+import {
+  IsEmail,
+  IsEnum,
+  IsNotEmpty,
+  IsOptional,
+  IsString,
+  MinLength,
+} from 'class-validator';
 import { Role } from '../enums/role.enum';
 
 export class SignupDto {
   @ApiProperty({
-    description: 'Nom complet de l’utilisateur',
-    example: 'Mohamed Amine Sassi',
+    example: 'ST12345',
+    description: "Identifiant de connexion (ce que l’app Android va utiliser)",
+    required: false,
+  })
+  @IsOptional()
+  @IsString()
+  identifiant?: string;
+
+  @ApiProperty({
+    description: "Nom complet de l’utilisateur",
+    example: 'Oussem Abderrahim',
   })
   @IsString()
   @IsNotEmpty()
   name: string;
 
   @ApiProperty({
-    description: 'Adresse email de l’utilisateur',
-    example: 'amine.sassi@esprit.tn',
+    description: "Adresse email de l’utilisateur",
+    example: 'oussem@esprit.tn',
   })
   @IsEmail()
   email: string;
@@ -27,11 +43,20 @@ export class SignupDto {
   password: string;
 
   @ApiProperty({
-    description: 'Rôle de l’utilisateur (Admin, President, User)',
-    example: 'User',
-    enum: Role,
-    default: Role.User,
+    description: 'Classe / groupe (ex: 4SIM4)',
+    example: '4SIM4',
     required: false,
+  })
+  @IsOptional()
+  @IsString()
+  classGroup?: string;
+
+  @ApiProperty({
+    description: 'Rôle de l’utilisateur',
+    example: 'student',
+    enum: Role,
+    required: false,
+    default: Role.User,
   })
   @IsOptional()
   @IsEnum(Role)

@@ -1,22 +1,32 @@
 // src/auth/constants.ts
 
 export const jwtConstants = {
-  // ✅ Load secret key from environment variable (.env)
-  secret: process.env.JWT_SECRET || 'default_fallback_secret',
+  /**
+   * 🔐 Secret key used for signing JWT tokens.
+   * Loaded from the environment (.env) for security.
+   * Fallback is provided for local/dev use only.
+   */
+  secret: process.env.JWT_SECRET ?? 'default_fallback_secret',
 
-  // 🧠 Note:
-  // Never hard-code your production secret.
-  // In production, define JWT_SECRET in your environment (e.g. Docker, Render, or .env file)
-  //
-  // Example:
-  // JWT_SECRET=mySuperSecretKey123
+  /**
+   * ⏰ Token expiration duration.
+   * Default: 24h (adjustable via .env)
+   */
+  expiresIn: process.env.JWT_EXPIRES_IN ?? '24h',
 };
 
 /*
 ───────────────────────────────────────────────────────────────
-💡 Purpose:
-This file centralizes the JWT configuration.
-By referencing `process.env.JWT_SECRET`, you can easily
-change the secret without editing multiple files.
+💡 PURPOSE:
+This file centralizes all JWT-related configuration.
+It ensures consistency and easy environment-based overrides.
+
+🧠 GOOD PRACTICE:
+- Never hard-code secrets in source code for production.
+- Define `JWT_SECRET` and `JWT_EXPIRES_IN` inside `.env`.
+
+🌱 Example (.env):
+JWT_SECRET=mySuperSecretKey
+JWT_EXPIRES_IN=24h
 ───────────────────────────────────────────────────────────────
 */

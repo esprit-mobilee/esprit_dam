@@ -1,4 +1,4 @@
-import { IsString, IsNotEmpty, IsOptional, IsArray, IsMongoId } from 'class-validator';
+import { IsString, IsNotEmpty, IsOptional } from 'class-validator';
 import { ApiProperty } from '@nestjs/swagger';
 
 export class CreateClubDto {
@@ -7,18 +7,38 @@ export class CreateClubDto {
   @IsNotEmpty()
   name: string;
 
-  @ApiProperty({ example: 'Club des passionnés de robotique et d’IA.' })
+  @ApiProperty({
+    example: 'Club des passionnés de robotique et d’IA.',
+    required: false,
+  })
   @IsOptional()
   @IsString()
   description?: string;
 
-  @ApiProperty({ example: '65f1a4b2c8a4d8c4f8b2a7e9', description: 'ID du président (optionnel)' })
+  @ApiProperty({
+    example: 'PR001',
+    description: 'ID MongoDB du président OU identifiant (ex: PR001)',
+    required: false,
+  })
   @IsOptional()
-  @IsMongoId()
+  @IsString()
   president?: string;
 
-  @ApiProperty({ example: ['robotique', 'innovation'], description: 'Mots-clés' })
+  @ApiProperty({
+    example: 'robotique, innovation',
+    description: 'Mots-clés séparés par des virgules',
+    required: false,
+  })
   @IsOptional()
-  @IsArray()
-  tags?: string[];
+  @IsString()
+  tags?: string;          // 👈 string, plus de string[]
+
+  @ApiProperty({
+    type: 'string',
+    format: 'binary',
+    required: false,
+    description: 'Logo / image du club',
+  })
+  @IsOptional()
+  image?: any;
 }
