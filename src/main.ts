@@ -7,34 +7,32 @@ import { SwaggerModule, DocumentBuilder } from '@nestjs/swagger';
 async function bootstrap() {
   const app = await NestFactory.create(AppModule);
 
-  // ✅ Autoriser les requêtes depuis le front (utile pour React, Angular ou Flutter)
+  // CORS
   app.enableCors({
-    origin: '*', // tu peux restreindre à ton domaine plus tard
-    methods: ['GET', 'POST', 'PUT', 'DELETE'],
+    origin: '*',
+    methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE'],
     allowedHeaders: ['Content-Type', 'Authorization'],
   });
 
-  // ✅ Préfixe global pour toutes les routes
+  // Préfixe global /api
   app.setGlobalPrefix('api');
 
-  // ✅ Validation automatique des DTOs
+  // Validation DTO
   app.useGlobalPipes(
     new ValidationPipe({
-      whitelist: true, // ignore les propriétés non déclarées dans le DTO
-      transform: true, // convertit automatiquement les types (string → number, etc.)
-      forbidNonWhitelisted: true, // bloque les champs non autorisés
+      whitelist: true,
+      transform: true,
+      forbidNonWhitelisted: true,
     }),
   );
 
-  // ✅ Gestion globale des exceptions
+  // Gestion des exceptions
   app.useGlobalFilters(new AllExceptionsFilter());
 
-  // 🚀 Configuration Swagger (Documentation de l'API)
+  // ----- Swagger -----
   const config = new DocumentBuilder()
     .setTitle('API ESPRIT Connect')
-    .setDescription(
-      'Documentation officielle de l’API ESPRIT Connect (Clubs, Étudiants, Administration, Authentification)',
-    )
+    .setDescription('Documentation officielle de l’API ESPRIT Connect')
     .setVersion('1.0')
     .addBearerAuth(
       {
@@ -42,10 +40,10 @@ async function bootstrap() {
         scheme: 'bearer',
         bearerFormat: 'JWT',
         name: 'Authorization',
-        description: 'Entrez votre token JWT au format : Bearer <votre_token>',
+        description: 'Bearer <token>',
         in: 'header',
       },
-      'access-token', // nom du schéma de sécurité
+      'access-token',
     )
     .build();
 
@@ -55,14 +53,91 @@ async function bootstrap() {
     customCss: '.swagger-ui .topbar { display: none }',
   });
 
-  // ✅ Lancer le serveur
   const port = process.env.PORT ?? 3000;
-  await app.listen(port);
 
-  console.log('✅ ValidationPipe & AllExceptionsFilter activés');
-  console.log(`🚀 Serveur en ligne : http://localhost:${port}/api`);
-  console.log('📦 MongoDB connecté via MongooseModule (voir app.module.ts)');
-  console.log(`📚 Swagger disponible sur : http://localhost:${port}/api-docs`);
+  // 🔥 IMPORTANT : Rendre le backend accessible sur le réseau
+  await app.listen(port, '0.0.0.0');
+
+  const url = await app.getUrl();
+
+  console.log('===============================================');
+  console.log(`🚀 Serveur en ligne : ${url}/api`);
+  console.log(`📚 Swagger : ${url}/api-docs`);
+  console.log('===============================================');
 }
 
 bootstrap();
+/*
+import { NestFactory } from '@nestjs/core';
+import { AppModule } from './app.module';
+import { AllExceptionsFilter } from './common/filters/all-exceptions.filter';
+import { ValidationPipe } from '@nestjs/common';
+import { SwaggerModule, DocumentBuilder } from '@nestjs/swagger';
+
+async function bootstrap() {
+  const app = await NestFactory.create(AppModule, {
+    cors: true,
+  });
+
+  // CORS
+  app.enableCors({
+    origin: '*',
+    methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE'],
+    allowedHeaders: ['Content-Type', 'Authorization'],
+  });
+
+  // Préfixe global /api
+  app.setGlobalPrefix('api');
+
+  // Validation DTO
+  app.useGlobalPipes(
+    new ValidationPipe({
+      whitelist: true,
+      transform: true,
+      forbidNonWhitelisted: true,
+    }),
+  );
+
+  // Gestion des exceptions
+  app.useGlobalFilters(new AllExceptionsFilter());
+
+  // Swagger
+  const config = new DocumentBuilder()
+    .setTitle('API ESPRIT Connect')
+    .setDescription('Documentation officielle de l’API ESPRIT Connect')
+    .setVersion('1.0')
+    .addBearerAuth(
+      {
+        type: 'http',
+        scheme: 'bearer',
+        bearerFormat: 'JWT',
+        name: 'Authorization',
+        description: 'Bearer <token>',
+        in: 'header',
+      },
+      'access-token',
+    )
+    .build();
+
+  const document = SwaggerModule.createDocument(app, config);
+  SwaggerModule.setup('api-docs', app, document, {
+    customSiteTitle: 'Documentation API ESPRIT Connect',
+    customCss: '.swagger-ui .topbar { display: none }',
+  });
+
+  const port = process.env.PORT ?? 3000;
+
+  // 🔥 IMPORTANT — Écoute sur toutes les interfaces réseau
+  await app.listen(port, '0.0.0.0', () => {
+    console.log(`🔥 Serveur accessible sur : http://0.0.0.0:${port}/api`);
+  });
+
+  const url = await app.getUrl();
+  console.log('===============================================');
+  console.log(`🚀 Serveur en ligne : ${url}/api`);
+  console.log(`📚 Swagger : ${url}/api-docs`);
+  console.log('===============================================');
+}
+
+bootstrap();
+*/

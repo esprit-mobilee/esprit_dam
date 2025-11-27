@@ -46,4 +46,11 @@ export class CreateUtilisateurDto {
   @IsOptional()
   @IsString()
   avatar?: string;
+  @ApiProperty({
+  example: '123456',
+  description: 'Mot de passe du compte utilisateur',
+})
+@IsString()
+password: string;
+
 }

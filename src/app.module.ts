@@ -7,6 +7,10 @@ import { UtilisateursModule } from './utilisateurs/utilisateurs.module';
 import { LoggerMiddleware } from './common/middlewear/logger.middleware';
 import { AuthModule } from './auth/auth.module';
 import { ClubsModule } from './clubs/clubs.module';
+import { MessageModule } from './message/message.module';
+//import { AnnouncementModule } from './announcement/announcement.module';
+//import { AnnoucementModule } from './annoucement/annoucement.module';
+import { AnnouncementModule } from './announcement/announcement.module';
 
 @Module({
   imports: [
@@ -21,6 +25,10 @@ import { ClubsModule } from './clubs/clubs.module';
     UtilisateursModule,
     AuthModule,
     ClubsModule,
+    MessageModule,
+    AnnouncementModule,
+    //AnnoucementModule,
+    //AnnouncementModule,
   ],
   controllers: [AppController],
   providers: [AppService],
