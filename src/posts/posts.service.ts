@@ -37,9 +37,13 @@ export class PostsService {
     if (!user) throw new NotFoundException('Utilisateur introuvable');
 
     // President check
-    if (!user.presidentOf || user.presidentOf.toString() !== clubId) {
+    // President or Club Account check
+    const isPresident = user.presidentOf && user.presidentOf.toString() === clubId;
+    const isClubAccount = user.role === Role.Club && user.club && user.club.toString() === clubId;
+
+    if (!isPresident && !isClubAccount) {
       throw new ForbiddenException(
-        'Vous devez être le président de ce club pour publier.',
+        'Vous devez être le président de ce club ou le compte club pour publier.',
       );
     }
 
