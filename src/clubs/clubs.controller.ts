@@ -13,7 +13,6 @@ import {
   Req,
 } from '@nestjs/common';
 import { ClubsService } from './clubs.service';
-import { CreateClubDto } from './dto/create-club.dto';
 import { UpdateClubDto } from './dto/update-club.dto';
 import {
   ApiTags,
@@ -37,21 +36,6 @@ import { multerOptions } from 'src/common/multer.config';
 @UseGuards(AuthenticationGuard, RolesGuard)
 export class ClubsController {
   constructor(private readonly clubsService: ClubsService) {}
-
-  // --------------------------------------------------------------------
-  // ADMIN ONLY → Create club
-  // --------------------------------------------------------------------
-  @Post()
-  @Roles(Role.Admin)
-  @ApiOperation({ summary: 'Créer un nouveau club' })
-  @ApiConsumes('multipart/form-data')
-  @UseInterceptors(FileInterceptor('image', multerOptions('clubs')))
-  create(
-    @UploadedFile() file: Express.Multer.File,
-    @Body() dto: CreateClubDto,
-  ) {
-    return this.clubsService.create(dto, file);
-  }
 
   // --------------------------------------------------------------------
   // ADMIN or STUDENT-PRESIDENT → Update club

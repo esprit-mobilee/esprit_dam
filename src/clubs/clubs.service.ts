@@ -2,17 +2,18 @@ import {
   Injectable,
   NotFoundException,
   BadRequestException,
-  ForbiddenException,
 } from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
 import { Model, Types, isValidObjectId } from 'mongoose';
+import * as bcrypt from 'bcrypt';
 import { Club, ClubDocument } from './schemas/club.schema';
 import {
   Utilisateur,
   UtilisateurDocument,
 } from 'src/utilisateurs/schemas/utilisateur.schema';
-import { CreateClubDto } from './dto/create-club.dto';
 import { UpdateClubDto } from './dto/update-club.dto';
+import { CreateFullClubDto } from './dto/create-full-club.dto';
+import { Role } from 'src/auth/enums/role.enum';
 
 @Injectable()
 export class ClubsService {
@@ -24,47 +25,47 @@ export class ClubsService {
   ) {}
 
   // --------------------------------------------------------
-  // CREATE CLUB (ADMIN)
+  // CREATE FULL CLUB + CLUB ACCOUNT (ADMIN)
   // --------------------------------------------------------
-  async create(dto: CreateClubDto, file?: Express.Multer.File): Promise<Club> {
-    let presidentObjectId: Types.ObjectId | null = null;
-
-    if (dto.president) {
-      if (isValidObjectId(dto.president)) {
-        presidentObjectId = new Types.ObjectId(dto.president);
-      } else {
-        const user = await this.userModel.findOne({ identifiant: dto.president });
-        if (!user) {
-          throw new NotFoundException(
-            `Aucun utilisateur trouvé avec l’identifiant ${dto.president}`,
-          );
-        }
-        presidentObjectId = user._id as Types.ObjectId;
-      }
-    }
-
-    const tagsArray = dto.tags
-      ? dto.tags.split(',').map((t) => t.trim()).filter((t) => t.length > 0)
-      : [];
-
+  async createFullClub(dto: CreateFullClubDto, file?: Express.Multer.File) {
+    const tagsArray = this.extractTags(dto.tags);
     const imageUrl = file ? `/uploads/clubs/${file.filename}` : null;
 
     const club = await this.clubModel.create({
       name: dto.name,
       description: dto.description ?? '',
-      president: presidentObjectId,
+      president: null,
+      members: [],
       tags: tagsArray,
       imageUrl,
     });
 
-    if (presidentObjectId) {
-      await this.userModel.updateOne(
-        { _id: presidentObjectId },
-        { $set: { presidentOf: club._id } },
-      );
-    }
+    const identifiant = await this.generateClubIdentifiant(dto.name);
+    const hashedPassword = await bcrypt.hash(dto.password, 10);
 
-    return this.findOne(String(club._id));
+    const user = await this.userModel.create({
+      identifiant,
+      name: dto.name,
+      firstName: dto.name,
+      lastName: '',
+      email: dto.email,
+      password: hashedPassword,
+      role: Role.Club,
+      club: club._id,
+      presidentOf: null,
+      clubs: [],
+    });
+
+    club.account = user._id as Types.ObjectId;
+    await club.save();
+
+    return {
+      clubId: String(club._id),
+      userId: String(user._id),
+      identifiant,
+      password: dto.password,
+      role: Role.Club,
+    };
   }
 
   // --------------------------------------------------------
@@ -75,6 +76,7 @@ export class ClubsService {
       .find()
       .populate('president', 'identifiant firstName lastName email role')
       .populate('members', 'identifiant firstName lastName email')
+      .populate('account', 'identifiant name email role')
       .exec();
   }
 
@@ -86,6 +88,7 @@ export class ClubsService {
       .findById(id)
       .populate('president', 'identifiant firstName lastName email role')
       .populate('members', 'identifiant firstName lastName email')
+      .populate('account', 'identifiant name email role')
       .exec();
 
     if (!club) throw new NotFoundException(`Club avec id ${id} introuvable`);
@@ -115,7 +118,7 @@ export class ClubsService {
 
       if (!newPresident) {
         throw new NotFoundException(
-          `Aucun utilisateur trouvé avec l’identifiant ou ID ${dto.president}`,
+          `Aucun utilisateur trouve avec l'identifiant ou ID ${dto.president}`,
         );
       }
 
@@ -135,9 +138,7 @@ export class ClubsService {
     if (dto.description !== undefined) club.description = dto.description;
 
     if (dto.tags !== undefined) {
-      club.tags = dto.tags
-        ? dto.tags.split(',').map((t) => t.trim()).filter((t) => t.length > 0)
-        : [];
+      club.tags = this.extractTags(dto.tags);
     }
 
     await club.save();
@@ -164,7 +165,7 @@ export class ClubsService {
     );
 
     await club.deleteOne();
-    return { message: 'Club supprimé avec succès' };
+    return { message: 'Club supprime avec succes' };
   }
 
   // --------------------------------------------------------
@@ -182,7 +183,7 @@ export class ClubsService {
     );
 
     if (alreadyMember) {
-      throw new BadRequestException('Utilisateur déjà membre du club');
+      throw new BadRequestException('Utilisateur deja membre du club');
     }
 
     club.members.push(user._id as Types.ObjectId);
@@ -246,5 +247,39 @@ export class ClubsService {
         ? { name: mostActive.name, members: mostActive.members.length }
         : null,
     };
+  }
+
+  // --------------------------------------------------------
+  // HELPERS
+  // --------------------------------------------------------
+  private extractTags(tags?: string) {
+    return tags
+      ? tags.split(',').map((t) => t.trim()).filter((t) => t.length > 0)
+      : [];
+  }
+
+  private async generateClubIdentifiant(name: string): Promise<string> {
+    const normalized = (name ?? '').toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '');
+    const base = normalized ? normalized.slice(0, 5) : 'clb';
+    let attempts = 0;
+
+    while (attempts < 20) {
+      const randomDigits = Math.floor(1000 + Math.random() * 9000);
+      const parts: string[] = [];
+      if (base) {
+        parts.push(base);
+      }
+      if (!base.includes('clb')) {
+        parts.push('clb');
+      }
+      const identifiant = `${parts.filter(Boolean).join('-')}${randomDigits}`;
+      const exists = await this.userModel.exists({ identifiant });
+      if (!exists) {
+        return identifiant;
+      }
+      attempts += 1;
+    }
+
+    return `clb${Date.now()}`;
   }
 }
