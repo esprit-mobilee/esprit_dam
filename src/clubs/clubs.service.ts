@@ -101,7 +101,8 @@ export class ClubsService {
   async update(
     id: string,
     dto: UpdateClubDto,
-    file?: Express.Multer.File,
+    profileImage?: Express.Multer.File,
+    coverImage?: Express.Multer.File,
   ): Promise<Club> {
     const club = await this.clubModel.findById(id);
     if (!club) throw new NotFoundException('Club introuvable');
@@ -130,8 +131,12 @@ export class ClubsService {
       club.president = newPresident._id as Types.ObjectId;
     }
 
-    if (file) {
-      club.imageUrl = `/uploads/clubs/${file.filename}`;
+    if (profileImage) {
+      club.imageUrl = `/uploads/clubs/${profileImage.filename}`;
+    }
+
+    if (coverImage) {
+      club.coverImageUrl = `/uploads/clubs/${coverImage.filename}`;
     }
 
     if (dto.name !== undefined) club.name = dto.name;

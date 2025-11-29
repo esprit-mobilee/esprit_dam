@@ -1,5 +1,5 @@
 import { Prop, Schema, SchemaFactory } from '@nestjs/mongoose';
-import { Document } from 'mongoose';
+import { Document, Types } from 'mongoose';
 
 @Schema({ timestamps: true })
 export class Event extends Document {
@@ -27,6 +27,31 @@ export class Event extends Document {
 
   @Prop()
   imageUrl?: string;
+
+  @Prop({ default: true })
+  registrationOpen: boolean;
+
+  @Prop({
+    type: [
+      {
+        userId: { type: Types.ObjectId, ref: 'Utilisateur', default: null },
+        name: { type: String, required: true },
+        identifiant: { type: String },
+        email: { type: String },
+        message: { type: String },
+        createdAt: { type: Date, default: Date.now },
+      },
+    ],
+    default: [],
+  })
+  registrations: {
+    userId?: Types.ObjectId | null;
+    name: string;
+    identifiant?: string;
+    email?: string;
+    message?: string;
+    createdAt: Date;
+  }[];
 }
 
 export type EventDocument = Event & Document;

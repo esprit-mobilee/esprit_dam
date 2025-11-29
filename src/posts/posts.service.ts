@@ -8,6 +8,7 @@ import { Model, Types } from 'mongoose';
 import { Post, PostDocument } from './schemas/post.schema';
 import { Club, ClubDocument } from 'src/clubs/schemas/club.schema';
 import { Utilisateur, UtilisateurDocument } from 'src/utilisateurs/schemas/utilisateur.schema';
+import { Role } from 'src/auth/enums/role.enum';
 
 @Injectable()
 export class PostsService {
@@ -51,6 +52,59 @@ export class PostsService {
     });
 
     return post;
+  }
+
+  private ensureCanManagePost(
+    user: any,
+    postClubId: string,
+  ) {
+    const isAdmin = user.role === Role.Admin;
+    const managedClubId = user.club ?? user.presidentOf;
+
+    if (isAdmin) {
+      return;
+    }
+
+    if (!managedClubId || String(managedClubId) !== String(postClubId)) {
+      throw new ForbiddenException(
+        'Vous ne pouvez gérer que les publications de votre club.',
+      );
+    }
+  }
+
+  async updatePost(
+    postId: string,
+    text: string | undefined,
+    imageUrl: string | undefined,
+    user: any,
+  ): Promise<Post> {
+    const post = await this.postModel.findById(postId);
+    if (!post) {
+      throw new NotFoundException('Publication introuvable');
+    }
+
+    this.ensureCanManagePost(user, String(post.clubId));
+
+    if (text !== undefined) {
+      post.text = text;
+    }
+    if (imageUrl !== undefined) {
+      post.imageUrl = imageUrl;
+    }
+
+    await post.save();
+    return post;
+  }
+
+  async deletePost(postId: string, user: any) {
+    const post = await this.postModel.findById(postId);
+    if (!post) {
+      throw new NotFoundException('Publication introuvable');
+    }
+
+    this.ensureCanManagePost(user, String(post.clubId));
+    await post.deleteOne();
+    return { message: 'Publication supprimée' };
   }
 
   // Get all posts of a club

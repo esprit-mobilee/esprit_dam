@@ -4,6 +4,7 @@ import {
   ExecutionContext,
   ForbiddenException,
 } from '@nestjs/common';
+import { Role } from '../enums/role.enum';
 
 @Injectable()
 export class IsPresidentGuard implements CanActivate {
@@ -11,9 +12,19 @@ export class IsPresidentGuard implements CanActivate {
     const req = context.switchToHttp().getRequest();
     const user = req.user;
 
-    if (!user || !user.presidentOf) {
+    if (!user) {
       throw new ForbiddenException(
-        'Only club presidents can perform this action',
+        'Only authenticated club managers can perform this action',
+      );
+    }
+
+    const isPresident = Boolean(user.presidentOf);
+    const isClubAccount = user.role === Role.Club;
+    const isAdmin = user.role === Role.Admin;
+
+    if (!isPresident && !isClubAccount && !isAdmin) {
+      throw new ForbiddenException(
+        'Only club presidents or club accounts can perform this action',
       );
     }
 

@@ -2,7 +2,7 @@
 import { NestFactory } from '@nestjs/core';
 import { AppModule } from './app.module';
 import { AllExceptionsFilter } from './common/filters/all-exceptions.filter';
-import { ValidationPipe } from '@nestjs/common';
+import { ValidationPipe, HttpException, HttpStatus } from '@nestjs/common';
 import { SwaggerModule, DocumentBuilder } from '@nestjs/swagger';
 import * as os from 'os';
 import { join } from 'path';
@@ -50,6 +50,25 @@ async function bootstrap() {
       whitelist: true,
       transform: true,
       forbidNonWhitelisted: true,
+      transformOptions: {
+        enableImplicitConversion: true,
+      },
+      exceptionFactory: (errors) => {
+        const messages = errors.map((error) => {
+          const constraints = error.constraints || {};
+          const property = error.property;
+          const errorMessages = Object.values(constraints);
+          return `${property}: ${errorMessages.join(', ')}`;
+        });
+        return new HttpException(
+          {
+            statusCode: HttpStatus.BAD_REQUEST,
+            message: messages,
+            error: 'Validation Error',
+          },
+          HttpStatus.BAD_REQUEST,
+        );
+      },
     }),
   );
 

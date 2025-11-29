@@ -12,15 +12,15 @@ import { Role } from '../enums/role.enum';
 export class SignupDto {
   @ApiProperty({
     example: 'ST12345',
-    description: "Identifiant de connexion (utilisé dans l'application mobile)",
-    required: false,
+    description: "Identifiant de connexion (utilise dans l'application mobile)",
+    required: true,
   })
-  @IsOptional()
   @IsString()
-  identifiant?: string;
+  @IsNotEmpty()
+  identifiant: string;
 
   @ApiProperty({
-    description: "Nom complet de l’utilisateur",
+    description: "Nom complet de l'utilisateur",
     example: 'Oussem Abderrahim',
   })
   @IsString()
@@ -28,14 +28,14 @@ export class SignupDto {
   name: string;
 
   @ApiProperty({
-    description: "Adresse email de l’utilisateur",
+    description: "Adresse email de l'utilisateur",
     example: 'oussem@esprit.tn',
   })
   @IsEmail()
   email: string;
 
   @ApiProperty({
-    description: 'Mot de passe (min 6 caractères)',
+    description: 'Mot de passe (min 6 caracteres)',
     example: 'P@ssword123',
   })
   @IsString()
@@ -52,7 +52,7 @@ export class SignupDto {
   classGroup?: string;
 
   @ApiProperty({
-    description: 'Rôle de l’utilisateur',
+    description: "Role de l'utilisateur",
     example: 'student',
     enum: Role,
     required: false,

@@ -42,36 +42,45 @@ export class AuthService {
       classGroup,
     } = signupData;
 
-    const emailInUse = await this.utilisateurModel.findOne({ email });
-    if (emailInUse) {
-      throw new BadRequestException('Email déjà utilisé');
+    if (!identifiant?.trim()) {
+      throw new BadRequestException("L'identifiant est obligatoire");
     }
 
-    if (identifiant) {
-      const identifiantInUse = await this.utilisateurModel.findOne({
-        identifiant,
-      });
-      if (identifiantInUse) {
-        throw new BadRequestException('Identifiant déjà utilisé');
+    if (email) {
+      const emailInUse = await this.utilisateurModel.findOne({ email });
+      if (emailInUse) {
+        throw new BadRequestException('Email d\u00e9j\u00e0 utilis\u00e9');
       }
+    }
+
+    const identifiantInUse = await this.utilisateurModel.findOne({
+      identifiant,
+    });
+    if (identifiantInUse) {
+      throw new BadRequestException('Identifiant d\u00e9j\u00e0 utilis\u00e9');
     }
 
     const hashedPassword = await bcrypt.hash(password, 10);
 
+    const [firstName, ...lastParts] = name.trim().split(' ');
+    const lastName = lastParts.join(' ');
+
     const newUser = await this.utilisateurModel.create({
       identifiant,
-      firstName: name,
-      lastName: '',
+      name,
+      firstName: firstName || name,
+      lastName,
       email,
       password: hashedPassword,
       age: 0,
       classGroup: classGroup ?? null,
       role: role ?? Role.User,
       presidentOf: null, // always null at signup
+      club: null,
       clubs: [],
     });
 
-    return { message: 'Utilisateur créé avec succès', userId: String(newUser._id) };
+    return { message: 'Utilisateur cr\u00e9\u00e9 avec succ\u00e8s', userId: String(newUser._id) };
   }
 
   // -------------------------------------------------------
@@ -80,13 +89,32 @@ export class AuthService {
   async login(credentials: LoginDto) {
     const { identifiant, password } = credentials;
 
-    const utilisateur = await this.utilisateurModel.findOne({
-      $or: [
-        { identifiant },
-        { email: identifiant },
-        { studentId: identifiant },
-      ],
-    });
+    const utilisateur = await this.validateUser(identifiant, password);
+
+    const tokens = await this.generateUserTokens(utilisateur);
+
+    return {
+      ...tokens,
+      user: {
+        id: String(utilisateur._id),
+        identifiant: utilisateur.identifiant,
+        name: utilisateur.name,
+        email: utilisateur.email ?? null,
+        role: utilisateur.role,
+        classGroup: utilisateur.classGroup ?? null,
+        studentId: utilisateur.studentId ?? null,
+        presidentOf: utilisateur.presidentOf ? String(utilisateur.presidentOf) : null,
+        club: utilisateur.club ? String(utilisateur.club) : null,
+      },
+      message: 'Connexion r\u00e9ussie',
+    };
+  }
+
+  // -------------------------------------------------------
+  // USER VALIDATION (IDENTIFIANT ONLY)
+  // -------------------------------------------------------
+  async validateUser(identifiant: string, password: string) {
+    const utilisateur = await this.utilisateurModel.findOne({ identifiant });
 
     if (!utilisateur) {
       throw new UnauthorizedException('Identifiants incorrects');
@@ -97,28 +125,7 @@ export class AuthService {
       throw new UnauthorizedException('Identifiants incorrects');
     }
 
-    const userId = String(utilisateur._id);
-    const tokens = await this.generateUserTokens(userId, utilisateur.role);
-
-    const fullName =
-      (utilisateur.firstName ?? '').trim().length > 0 ||
-      (utilisateur.lastName ?? '').trim().length > 0
-        ? `${utilisateur.firstName ?? ''} ${utilisateur.lastName ?? ''}`.trim()
-        : utilisateur.email;
-
-    return {
-      ...tokens,
-      user: {
-        id: userId,
-        name: fullName,
-        email: utilisateur.email,
-        role: utilisateur.role,
-        classGroup: utilisateur.classGroup ?? null,
-        studentId: utilisateur.studentId ?? null,
-        presidentOf: utilisateur.presidentOf ? String(utilisateur.presidentOf) : null,
-      },
-      message: 'Connexion réussie',
-    };
+    return utilisateur;
   }
 
   // -------------------------------------------------------
@@ -130,31 +137,39 @@ export class AuthService {
       throw new UnauthorizedException('Utilisateur introuvable');
     }
 
-    const fullName =
-      (user.firstName ?? '').trim().length > 0 ||
-      (user.lastName ?? '').trim().length > 0
-        ? `${user.firstName ?? ''} ${user.lastName ?? ''}`.trim()
-        : user.email;
-
     return {
       id: String(user._id),
-      name: fullName,
-      email: user.email,
+      identifiant: user.identifiant,
+      name: user.name,
+      email: user.email ?? null,
       role: user.role,
       classGroup: user.classGroup ?? null,
       studentId: user.studentId ?? null,
       presidentOf: user.presidentOf ? String(user.presidentOf) : null,
+      club: user.club ? String(user.club) : null,
     };
   }
 
   // -------------------------------------------------------
   // TOKENS
   // -------------------------------------------------------
-  async generateUserTokens(userId: string, role: Role) {
-    const accessToken = this.jwtService.sign({ userId, role }, { expiresIn: '10h' });
+  private buildJwtPayload(user: UtilisateurDocument) {
+    return {
+      userId: String(user._id),
+      identifiant: user.identifiant,
+      role: user.role,
+      classGroup: user.classGroup ?? null,
+      presidentOf: user.presidentOf ? String(user.presidentOf) : null,
+      club: user.club ? String(user.club) : null,
+    };
+  }
+
+  async generateUserTokens(user: UtilisateurDocument) {
+    const payload = this.buildJwtPayload(user);
+    const accessToken = this.jwtService.sign(payload, { expiresIn: '10h' });
     const refreshToken = uuidv4();
 
-    await this.storeRefreshToken(refreshToken, userId);
+    await this.storeRefreshToken(refreshToken, String(user._id));
 
     return { accessToken, refreshToken };
   }
@@ -177,7 +192,7 @@ export class AuthService {
     });
 
     if (!token) {
-      throw new UnauthorizedException('Refresh Token invalide ou expiré');
+      throw new UnauthorizedException('Refresh Token invalide ou expir\u00e9');
     }
 
     const user = await this.utilisateurModel.findById(token.userId);
@@ -185,7 +200,7 @@ export class AuthService {
       throw new UnauthorizedException('Utilisateur introuvable');
     }
 
-    return this.generateUserTokens(String(token.userId), user.role);
+    return this.generateUserTokens(user);
   }
 
   // -------------------------------------------------------
@@ -194,7 +209,7 @@ export class AuthService {
   async changePassword(userId: string, oldPassword: string, newPassword: string) {
     const utilisateur = await this.utilisateurModel.findById(userId);
     if (!utilisateur) {
-      throw new UnauthorizedException('Utilisateur non trouvé');
+      throw new UnauthorizedException('Utilisateur non trouv\u00e9');
     }
 
     const isMatch = await bcrypt.compare(oldPassword, utilisateur.password);
@@ -205,6 +220,6 @@ export class AuthService {
     utilisateur.password = await bcrypt.hash(newPassword, 10);
     await utilisateur.save();
 
-    return { message: 'Mot de passe modifié avec succès' };
+    return { message: 'Mot de passe modifi\u00e9 avec succ\u00e8s' };
   }
 }

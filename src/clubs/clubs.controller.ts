@@ -7,7 +7,7 @@ import {
   Delete,
   Put,
   UseGuards,
-  UploadedFile,
+  UploadedFiles,
   UseInterceptors,
   ForbiddenException,
   Req,
@@ -27,7 +27,7 @@ import { Roles } from 'src/auth/decorators/roles.decorator';
 import { Role } from 'src/auth/enums/role.enum';
 
 import { IsPresidentGuard } from 'src/auth/guards/is-president.guard';
-import { FileInterceptor } from '@nestjs/platform-express';
+import { FileFieldsInterceptor } from '@nestjs/platform-express';
 import { multerOptions } from 'src/common/multer.config';
 
 @ApiTags('Clubs')
@@ -42,18 +42,32 @@ export class ClubsController {
   // --------------------------------------------------------------------
   @Put(':id')
   @ApiConsumes('multipart/form-data')
-  @UseInterceptors(FileInterceptor('image', multerOptions('clubs')))
+  @UseInterceptors(
+    FileFieldsInterceptor(
+      [
+        { name: 'profileImage', maxCount: 1 },
+        { name: 'coverImage', maxCount: 1 },
+      ],
+      multerOptions('clubs'),
+    ),
+  )
   async update(
     @Param('id') id: string,
-    @UploadedFile() file: Express.Multer.File,
+    @UploadedFiles()
+    files: {
+      profileImage?: Express.Multer.File[];
+      coverImage?: Express.Multer.File[];
+    },
     @Body() dto: UpdateClubDto,
     @Req() req: any,
   ) {
     const user = req.user;
+    const profileImage = files?.profileImage?.[0];
+    const coverImage = files?.coverImage?.[0];
 
     // Admin has global rights
     if (user.role === Role.Admin) {
-      return this.clubsService.update(id, dto, file);
+      return this.clubsService.update(id, dto, profileImage, coverImage);
     }
 
     // Student-president → must match the club he presides
@@ -63,7 +77,7 @@ export class ClubsController {
           'Vous ne pouvez modifier que votre propre club.',
         );
       }
-      return this.clubsService.update(id, dto, file);
+      return this.clubsService.update(id, dto, profileImage, coverImage);
     }
 
     throw new ForbiddenException('Action non autorisée.');
