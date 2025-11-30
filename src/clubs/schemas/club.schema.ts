@@ -21,6 +21,12 @@ export class Club extends Document {
 
   @Prop()
   imageUrl?: string;
+
+  @Prop()
+  coverImageUrl?: string;
+
+  @Prop({ type: Types.ObjectId, ref: Utilisateur.name, default: null })
+  account?: Types.ObjectId | null;
 }
 
 export type ClubDocument = Club & Document;

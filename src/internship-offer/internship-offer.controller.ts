@@ -6,12 +6,14 @@ import {
   Delete,
   Put,
   NotFoundException,
+  BadRequestException,
   UseGuards,
   UseInterceptors,
   UploadedFile,
   Req,
+  Body,
 } from '@nestjs/common';
-import { ApiTags, ApiOperation, ApiBearerAuth } from '@nestjs/swagger';
+import { ApiTags, ApiOperation, ApiBearerAuth, ApiConsumes, ApiBody } from '@nestjs/swagger';
 import { AuthGuard } from '@nestjs/passport';
 import { RolesGuard } from '../auth/guards/roles.guard';
 import { Roles } from '../auth/decorators/roles.decorator';
@@ -24,12 +26,17 @@ import { FileInterceptor } from '@nestjs/platform-express';
 import { diskStorage } from 'multer';
 import { v4 as uuid } from 'uuid';
 import { extname } from 'path';
+import { UpdateInternshipOfferDto } from './dto/update-internship-offer.dto';
 
 @ApiBearerAuth('access-token')
 @ApiTags('Internship Offers')
 @Controller('internship-offers')
 export class InternshipOfferController {
-  constructor(private readonly internshipService: InternshipOfferService) {}
+  constructor(
+    private readonly internshipService: InternshipOfferService,
+  ) {}
+
+  // ============ LISTE & DÉTAILS ============
 
   // ======================================================
   // =                GET ALL (Student + Admin)           =
@@ -46,7 +53,9 @@ export class InternshipOfferController {
   @ApiOperation({ summary: 'Récupérer une offre par id' })
   async findOne(@Param('id') id: string): Promise<InternshipOffer> {
     const offer = await this.internshipService.findOne(id.trim());
-    if (!offer) throw new NotFoundException('Offre non trouvée');
+    if (!offer) {
+      throw new NotFoundException('Offre non trouvée');
+    }
     return offer;
   }
 
@@ -57,6 +66,45 @@ export class InternshipOfferController {
   @UseGuards(AuthGuard('jwt'), RolesGuard)
   @Roles(Role.Admin)
   @ApiOperation({ summary: 'Créer une nouvelle offre de stage (admin)' })
+  @ApiConsumes('multipart/form-data')
+  @ApiBody({
+    schema: {
+      type: 'object',
+      required: ['title', 'company', 'description', 'duration'],
+      properties: {
+        title: {
+          type: 'string',
+          example: 'Développeur Web',
+        },
+        company: {
+          type: 'string',
+          example: 'ESPRIT',
+        },
+        description: {
+          type: 'string',
+          example: 'Développement d’une application mobile Kotlin.',
+        },
+        location: {
+          type: 'string',
+          example: 'Ariana',
+        },
+        duration: {
+          type: 'number',
+          example: 12,
+          description: 'Durée du stage en semaines',
+        },
+        salary: {
+          type: 'number',
+          example: 600,
+        },
+        logo: {
+          type: 'string',
+          format: 'binary',
+          description: 'Fichier image du logo (optionnel)',
+        },
+      },
+    },
+  })
   @UseInterceptors(
     FileInterceptor('image', {
       storage: diskStorage({
@@ -121,8 +169,7 @@ export class InternshipOfferController {
   )
   async update(
     @Param('id') id: string,
-    @Req() req,
-    @UploadedFile() file?: Express.Multer.File,
+    @Body() dto: UpdateInternshipOfferDto,
   ): Promise<InternshipOffer> {
     const cleanId = id.trim();
     const dto: any = req.body;

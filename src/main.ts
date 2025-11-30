@@ -1,7 +1,8 @@
+// src/main.ts
 import { NestFactory } from '@nestjs/core';
 import { AppModule } from './app.module';
 import { AllExceptionsFilter } from './common/filters/all-exceptions.filter';
-import { ValidationPipe } from '@nestjs/common';
+import { ValidationPipe, HttpException, HttpStatus } from '@nestjs/common';
 import { SwaggerModule, DocumentBuilder } from '@nestjs/swagger';
 import * as os from 'os';
 import { join } from 'path';
@@ -24,6 +25,7 @@ function getLocalIp(): string {
 
 async function bootstrap() {
   // ⚠ obligatoire pour servir les fichiers (pdf, images…)
+  // 👇 On tape l'app en NestExpressApplication pour avoir useStaticAssets typé
   const app = await NestFactory.create<NestExpressApplication>(AppModule);
 
   // ---------- CORS ----------
@@ -37,11 +39,41 @@ async function bootstrap() {
   app.setGlobalPrefix('api');
 
   // ---------- VALIDATION PIPE ----------
+  // ✅ Préfixe global pour toutes les routes
+  app.setGlobalPrefix('api');
+
+  // ✅ servir les fichiers uploadés (logos, images, etc.)
+  // -> un fichier ./uploads/logos/xxx.png sera dispo sur :
+  //    http://IP:3000/uploads/logos/xxx.png
+  app.useStaticAssets(join(__dirname, '..', 'uploads'), {
+    prefix: '/uploads',
+  });
+
+  // ✅ Validation DTO
   app.useGlobalPipes(
     new ValidationPipe({
       whitelist: true,
       transform: true,
       forbidNonWhitelisted: true,
+      transformOptions: {
+        enableImplicitConversion: true,
+      },
+      exceptionFactory: (errors) => {
+        const messages = errors.map((error) => {
+          const constraints = error.constraints || {};
+          const property = error.property;
+          const errorMessages = Object.values(constraints);
+          return `${property}: ${errorMessages.join(', ')}`;
+        });
+        return new HttpException(
+          {
+            statusCode: HttpStatus.BAD_REQUEST,
+            message: messages,
+            error: 'Validation Error',
+          },
+          HttpStatus.BAD_REQUEST,
+        );
+      },
     }),
   );
 
@@ -56,6 +88,7 @@ async function bootstrap() {
   });
 
   // ---------- SWAGGER ----------
+  // ✅ Swagger
   const config = new DocumentBuilder()
     .setTitle('API ESPRIT Connect')
     .setDescription(

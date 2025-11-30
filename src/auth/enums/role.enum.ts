@@ -7,4 +7,5 @@ export enum Role {
   Teacher = 'teacher',
   Student = 'student',
   Parent = 'parent',
+  Club = 'club',
 }
