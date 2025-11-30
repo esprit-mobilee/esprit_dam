@@ -21,7 +21,7 @@ export class PostsService {
 
     @InjectModel(Utilisateur.name)
     private readonly userModel: Model<UtilisateurDocument>,
-  ) {}
+  ) { }
 
   // Create a post — ONLY PRESIDENT
   async createPost(
@@ -117,7 +117,7 @@ export class PostsService {
     if (!club) throw new NotFoundException('Club introuvable');
 
     return this.postModel
-      .find({ clubId })
+      .find({ clubId: new Types.ObjectId(clubId) })
       .sort({ createdAt: -1 })
       .populate('authorId', 'firstName lastName email')
       .exec();
