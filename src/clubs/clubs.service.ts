@@ -14,6 +14,8 @@ import {
 import { UpdateClubDto } from './dto/update-club.dto';
 import { CreateFullClubDto } from './dto/create-full-club.dto';
 import { Role } from 'src/auth/enums/role.enum';
+import { NotificationsService } from 'src/notifications/notifications.service';
+import { NotificationType } from 'src/notifications/schemas/notification.schema';
 
 @Injectable()
 export class ClubsService {
@@ -22,7 +24,8 @@ export class ClubsService {
     private readonly clubModel: Model<ClubDocument>,
     @InjectModel(Utilisateur.name)
     private readonly userModel: Model<UtilisateurDocument>,
-  ) {}
+    private readonly notificationsService: NotificationsService,
+  ) { }
 
   // --------------------------------------------------------
   // CREATE FULL CLUB + CLUB ACCOUNT (ADMIN)
@@ -197,6 +200,14 @@ export class ClubsService {
     await club.save();
     await user.save();
 
+    // Create notification for club
+    await this.notificationsService.create(
+      String(club._id),
+      NotificationType.JOIN_REQUEST,
+      String(user._id),
+      `${user.firstName} ${user.lastName} a rejoint le club`,
+    );
+
     return this.findOne(clubId);
   }
 
@@ -224,6 +235,19 @@ export class ClubsService {
   async getMembers(clubId: string) {
     const club = await this.findOne(clubId);
     return club.members;
+  }
+
+  // --------------------------------------------------------
+  // TOGGLE JOIN ENABLED
+  // --------------------------------------------------------
+  async toggleJoinEnabled(id: string): Promise<Club> {
+    const club = await this.clubModel.findById(id);
+    if (!club) throw new NotFoundException('Club introuvable');
+
+    club.joinEnabled = !club.joinEnabled;
+    await club.save();
+
+    return this.findOne(id);
   }
 
   // --------------------------------------------------------

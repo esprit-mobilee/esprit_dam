@@ -35,7 +35,7 @@ import { multerOptions } from 'src/common/multer.config';
 @Controller('clubs')
 @UseGuards(AuthenticationGuard, RolesGuard)
 export class ClubsController {
-  constructor(private readonly clubsService: ClubsService) {}
+  constructor(private readonly clubsService: ClubsService) { }
 
   // --------------------------------------------------------------------
   // ADMIN or STUDENT-PRESIDENT → Update club
@@ -168,6 +168,33 @@ export class ClubsController {
   @Get(':clubId/members')
   getMembers(@Param('clubId') clubId: string) {
     return this.clubsService.getMembers(clubId);
+  }
+
+  // --------------------------------------------------------------------
+  // PRESIDENT OR ADMIN → Toggle join enabled
+  // --------------------------------------------------------------------
+  @Post(':id/toggle-join')
+  @UseGuards(IsPresidentGuard)
+  async toggleJoinEnabled(
+    @Param('id') id: string,
+    @Req() req: any,
+  ) {
+    const user = req.user;
+
+    // Admin can manage any club
+    if (user.role === Role.Admin) {
+      return this.clubsService.toggleJoinEnabled(id);
+    }
+
+    // Student-president can manage ONLY his club
+    const managedClubId = user.club ?? user.presidentOf;
+    if (String(managedClubId) !== id) {
+      throw new ForbiddenException(
+        'Vous ne pouvez gérer que votre propre club.',
+      );
+    }
+
+    return this.clubsService.toggleJoinEnabled(id);
   }
 
   // --------------------------------------------------------------------
