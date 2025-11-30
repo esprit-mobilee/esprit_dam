@@ -16,7 +16,7 @@ export class ApplicationService {
     @InjectModel(Utilisateur.name)
     private readonly userModel: Model<UtilisateurDocument>,
     private readonly emailService: EmailService,
-  ) {}
+  ) { }
 
   // ---------- CREATE ----------
   async create(dto: CreateApplicationDto): Promise<Application> {
@@ -29,47 +29,52 @@ export class ApplicationService {
     return this.applicationModel.find().populate('internshipId').exec();
   }
 
- async updateApplicationStatus(id: string, status: string) {
-  const application = await this.applicationModel
-    .findById(id)
-    .populate('internshipId')
-    .exec();
+  async updateApplicationStatus(id: string, status: string) {
+    const application = await this.applicationModel
+      .findById(id)
+      .populate('internshipId')
+      .exec();
 
-  if (!application) {
-    throw new NotFoundException('Application not found');
-  }
+    if (!application) {
+      throw new NotFoundException('Application not found');
+    }
 
-  application.status = status;
-  await application.save();
+    application.status = status;
+    await application.save();
 
-  const user = await this.userModel.findById(application.userId).exec();
-  
-  if (!user) {
-    console.warn(`User not found for userId: ${application.userId}`);
+    const user = await this.userModel.findById(application.userId).exec();
+
+    if (!user) {
+      console.warn(`User not found for userId: ${application.userId}`);
+      return application;
+    }
+
+    if (!user.email) {
+      console.warn(`User email not found for userId: ${application.userId}`);
+      return application;
+    }
+
+    const internship = application.internshipId as any;
+    const fullName = `${user.firstName || ''} ${user.lastName || ''}`.trim() || 'Étudiant';
+
+    console.log('📧 Tentative d\'envoi d\'email à:', user.email); // ← LOG AJOUTÉ
+    console.log('👤 Nom:', fullName); // ← LOG AJOUTÉ
+    console.log('💼 Stage:', internship.title); // ← LOG AJOUTÉ
+
+    try {
+      if (status === 'accepted') {
+        await this.emailService.sendAcceptanceEmail(user.email, fullName, internship.title);
+        console.log('✅ Email d\'acceptation envoyé avec succès'); // ← LOG AJOUTÉ
+      } else if (status === 'rejected') {
+        await this.emailService.sendRejectionEmail(user.email, fullName, internship.title);
+        console.log('✅ Email de rejet envoyé avec succès'); // ← LOG AJOUTÉ
+      }
+    } catch (error) {
+      console.error('❌ Erreur lors de l\'envoi de l\'email:', error); // ← LOG AJOUTÉ
+    }
+
     return application;
   }
-
-  const internship = application.internshipId as any;
-  const fullName = `${user.firstName || ''} ${user.lastName || ''}`.trim() || 'Étudiant';
-
-  console.log('📧 Tentative d\'envoi d\'email à:', user.email); // ← LOG AJOUTÉ
-  console.log('👤 Nom:', fullName); // ← LOG AJOUTÉ
-  console.log('💼 Stage:', internship.title); // ← LOG AJOUTÉ
-
-  try {
-    if (status === 'accepted') {
-      await this.emailService.sendAcceptanceEmail(user.email, fullName, internship.title);
-      console.log('✅ Email d\'acceptation envoyé avec succès'); // ← LOG AJOUTÉ
-    } else if (status === 'rejected') {
-      await this.emailService.sendRejectionEmail(user.email, fullName, internship.title);
-      console.log('✅ Email de rejet envoyé avec succès'); // ← LOG AJOUTÉ
-    }
-  } catch (error) {
-    console.error('❌ Erreur lors de l\'envoi de l\'email:', error); // ← LOG AJOUTÉ
-  }
-
-  return application;
-}
 
   async findOne(id: string): Promise<Application> {
     const app = await this.applicationModel

@@ -34,7 +34,7 @@ import { UpdateInternshipOfferDto } from './dto/update-internship-offer.dto';
 export class InternshipOfferController {
   constructor(
     private readonly internshipService: InternshipOfferService,
-  ) {}
+  ) { }
 
   // ============ LISTE & DÉTAILS ============
 
@@ -169,7 +169,8 @@ export class InternshipOfferController {
   )
   async update(
     @Param('id') id: string,
-    @Body() dto: UpdateInternshipOfferDto,
+    @Req() req,
+    @UploadedFile() file?: Express.Multer.File,
   ): Promise<InternshipOffer> {
     const cleanId = id.trim();
     const dto: any = req.body;
