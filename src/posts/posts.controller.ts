@@ -24,7 +24,7 @@ import { Role } from 'src/auth/enums/role.enum';
 @Controller('posts')
 @UseGuards(AuthenticationGuard)
 export class PostsController {
-  constructor(private readonly postsService: PostsService) {}
+  constructor(private readonly postsService: PostsService) { }
 
   // PRESIDENT: create post
   @Post(':clubId')
@@ -87,5 +87,26 @@ export class PostsController {
   @UseGuards(IsPresidentGuard)
   async remove(@Param('postId') postId: string, @Req() req: any) {
     return this.postsService.deletePost(postId, req.user);
+  }
+  // PUBLIC: like post
+  @Post(':postId/like')
+  async like(@Param('postId') postId: string, @Req() req: any) {
+    return this.postsService.likePost(postId, req.user.userId);
+  }
+
+  // PUBLIC: dislike post
+  @Post(':postId/dislike')
+  async dislike(@Param('postId') postId: string, @Req() req: any) {
+    return this.postsService.dislikePost(postId, req.user.userId);
+  }
+
+  // PUBLIC: comment post
+  @Post(':postId/comment')
+  async comment(
+    @Param('postId') postId: string,
+    @Body('content') content: string,
+    @Req() req: any,
+  ) {
+    return this.postsService.commentPost(postId, req.user.userId, content);
   }
 }

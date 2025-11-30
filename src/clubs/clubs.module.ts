@@ -8,6 +8,7 @@ import { Utilisateur, UtilisateurSchema } from 'src/utilisateurs/schemas/utilisa
 import { Event, EventSchema } from 'src/events/schemas/event.schema';
 import { Post, PostSchema } from 'src/posts/schemas/post.schema';
 import { ClubPortalController } from './club-portal.controller';
+import { NotificationsModule } from 'src/notifications/notifications.module';
 
 @Module({
   imports: [
@@ -17,9 +18,10 @@ import { ClubPortalController } from './club-portal.controller';
       { name: Event.name, schema: EventSchema },
       { name: Post.name, schema: PostSchema },
     ]),
+    NotificationsModule,
   ],
   controllers: [ClubsController, AdminClubsController, ClubPortalController],
   providers: [ClubsService],
   exports: [ClubsService], // ✅ exported so EventsModule & AuthModule can use it
 })
-export class ClubsModule {}
+export class ClubsModule { }

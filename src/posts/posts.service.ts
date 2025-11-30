@@ -122,4 +122,70 @@ export class PostsService {
       .populate('authorId', 'firstName lastName email')
       .exec();
   }
+  async likePost(postId: string, userId: string): Promise<Post> {
+    const post = await this.postModel.findById(postId);
+    if (!post) throw new NotFoundException('Publication introuvable');
+
+    const userObjectId = new Types.ObjectId(userId);
+
+    // Remove from dislikes if present
+    const dislikeIndex = post.dislikes.indexOf(userObjectId);
+    if (dislikeIndex > -1) {
+      post.dislikes.splice(dislikeIndex, 1);
+    }
+
+    // Toggle like
+    const likeIndex = post.likes.indexOf(userObjectId);
+    if (likeIndex > -1) {
+      post.likes.splice(likeIndex, 1);
+    } else {
+      post.likes.push(userObjectId);
+    }
+
+    await post.save();
+    return post;
+  }
+
+  async dislikePost(postId: string, userId: string): Promise<Post> {
+    const post = await this.postModel.findById(postId);
+    if (!post) throw new NotFoundException('Publication introuvable');
+
+    const userObjectId = new Types.ObjectId(userId);
+
+    // Remove from likes if present
+    const likeIndex = post.likes.indexOf(userObjectId);
+    if (likeIndex > -1) {
+      post.likes.splice(likeIndex, 1);
+    }
+
+    // Toggle dislike
+    const dislikeIndex = post.dislikes.indexOf(userObjectId);
+    if (dislikeIndex > -1) {
+      post.dislikes.splice(dislikeIndex, 1);
+    } else {
+      post.dislikes.push(userObjectId);
+    }
+
+    await post.save();
+    return post;
+  }
+
+  async commentPost(postId: string, userId: string, content: string): Promise<Post> {
+    const post = await this.postModel.findById(postId);
+    if (!post) throw new NotFoundException('Publication introuvable');
+
+    const user = await this.userModel.findById(userId);
+    if (!user) throw new NotFoundException('Utilisateur introuvable');
+
+    post.comments.push({
+      userId: new Types.ObjectId(userId),
+      userName: `${user.firstName} ${user.lastName}`,
+      userAvatar: user.avatar,
+      content,
+      createdAt: new Date()
+    });
+
+    await post.save();
+    return post;
+  }
 }

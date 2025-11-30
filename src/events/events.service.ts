@@ -5,13 +5,16 @@ import { Event, EventDocument } from './schemas/event.schema';
 import { CreateEventDto } from './dto/create-event.dto';
 import { UpdateEventDto } from './dto/update-event.dto';
 import { JoinEventDto } from './dto/join-event.dto';
+import { NotificationsService } from 'src/notifications/notifications.service';
+import { NotificationType } from 'src/notifications/schemas/notification.schema';
 
 @Injectable()
 export class EventsService {
   constructor(
     @InjectModel(Event.name)
     private readonly eventModel: Model<EventDocument>,
-  ) {}
+    private readonly notificationsService: NotificationsService,
+  ) { }
 
   async create(
     dto: CreateEventDto,
@@ -72,7 +75,7 @@ export class EventsService {
       .exec();
 
     if (!event) {
-      throw new NotFoundException(`�%vǸnement avec id ${id} introuvable`);
+      throw new NotFoundException(`Événement avec id ${id} introuvable`);
     }
     return event;
   }
@@ -84,7 +87,7 @@ export class EventsService {
   ): Promise<Event> {
     const event = await this.eventModel.findById(id);
     if (!event) {
-      throw new NotFoundException('�%vǸnement introuvable');
+      throw new NotFoundException('Événement introuvable');
     }
 
     // Parse date strings to Date objects if provided
@@ -127,9 +130,9 @@ export class EventsService {
   async remove(id: string): Promise<{ message: string }> {
     const deleted = await this.eventModel.findByIdAndDelete(id);
     if (!deleted) {
-      throw new NotFoundException(`�%vǸnement avec id ${id} introuvable`);
+      throw new NotFoundException(`Événement avec id ${id} introuvable`);
     }
-    return { message: '�%vǸnement supprimǸ avec succ��s' };
+    return { message: 'Événement supprimé avec succès' };
   }
 
   async toggleRegistration(id: string): Promise<Event> {
@@ -185,9 +188,11 @@ export class EventsService {
       throw new BadRequestException('Vous êtes déjà inscrit à cet événement');
     }
 
+    const participantName = dto.fullName ?? user?.name ?? 'Participant';
+
     event.registrations.push({
       userId: userObjectId,
-      name: dto.fullName ?? user?.name ?? 'Participant',
+      name: participantName,
       identifiant: dto.studentId ?? user?.identifiant ?? undefined,
       email: dto.email,
       message: dto.message,
@@ -195,6 +200,17 @@ export class EventsService {
     });
 
     await event.save();
+
+    // Create notification for event organizer (club)
+    if (event.organizerId && userObjectId) {
+      await this.notificationsService.create(
+        String(event.organizerId),
+        NotificationType.EVENT_REGISTRATION,
+        String(userObjectId),
+        `${participantName} s'est inscrit à l'événement "${event.title}"`,
+      );
+    }
+
     return { message: 'Inscription enregistrée', registrationCount: event.registrations.length };
   }
 }

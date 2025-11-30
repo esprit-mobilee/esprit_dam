@@ -25,6 +25,9 @@ export class Club extends Document {
   @Prop()
   coverImageUrl?: string;
 
+  @Prop({ default: true })
+  joinEnabled: boolean;
+
   @Prop({ type: Types.ObjectId, ref: Utilisateur.name, default: null })
   account?: Types.ObjectId | null;
 }
