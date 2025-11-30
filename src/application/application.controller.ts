@@ -10,6 +10,7 @@ import { FileInterceptor } from '@nestjs/platform-express';
 import { diskStorage } from 'multer';
 import { v4 as uuid } from 'uuid';
 import { extname } from 'path';
+
 @ApiTags('Applications')
 @Controller('applications')
 export class ApplicationController {
@@ -23,42 +24,44 @@ export class ApplicationController {
   create(@Body() dto: CreateApplicationDto): Promise<Application> {
     return this.applicationService.create(dto);
   }
- // ---------- UPLOAD PDF + CREATE APPLICATION ----------
-@Post('upload')
-@UseInterceptors(
-  FileInterceptor('cv', {
-    storage: diskStorage({
-      destination: './uploads/cv',
-      filename: (req, file, cb) => {
-        const uniqueName = uuid() + extname(file.originalname);
-        cb(null, uniqueName);
-      },
+
+  // ---------- UPLOAD PDF + CREATE APPLICATION ----------
+  @Post('upload')
+  @UseInterceptors(
+    FileInterceptor('cv', {
+      storage: diskStorage({
+        destination: './uploads/cv',
+        filename: (req, file, cb) => {
+          const uniqueName = uuid() + extname(file.originalname);
+          cb(null, uniqueName);
+        },
+      }),
     }),
-  }),
-)
-async uploadCvAndCreate(
-  @UploadedFile() file: Express.Multer.File,
-  @Body() body: any,
-) {
-  if (!file) {
-    return { error: 'No file uploaded' };
+  )
+  async uploadCvAndCreate(
+    @UploadedFile() file: Express.Multer.File,
+    @Body() body: any,
+  ) {
+    if (!file) {
+      return { error: 'No file uploaded' };
+    }
+
+    const fileUrl = `/uploads/cv/${file.filename}`;
+
+    // Construire un vrai DTO pour créer la candidature
+    const createDto: CreateApplicationDto = {
+      userId: body.userId,
+      internshipId: body.internshipId,
+      cvUrl: fileUrl,
+      coverLetter: body.coverLetter ?? '',
+    };
+
+    // Création dans MongoDB
+    const created = await this.applicationService.create(createDto);
+
+    return created;
   }
 
-  const fileUrl = `/uploads/cv/${file.filename}`;
-
-  // Construire un vrai DTO pour créer la candidature
-  const createDto: CreateApplicationDto = {
-    userId: body.userId,
-    internshipId: body.internshipId,
-    cvUrl: fileUrl,               // le fichier uploadé ⬅️
-    coverLetter: body.coverLetter ?? '',
-  };
-
-  // Création dans MongoDB
-  const created = await this.applicationService.create(createDto);
-
-  return created; // Swift peut décoder Application directement
-}
   // ---------- READ / UPDATE / DELETE standards (par _id MongoDB) ----------
   @Get()
   @ApiOperation({ summary: 'Afficher toutes les candidatures' })
@@ -78,10 +81,15 @@ async uploadCvAndCreate(
   @ApiOperation({
     summary: 'Mettre à jour une candidature (status, score, etc.)',
   })
-  update(
+  async update(
     @Param('id') id: string,
     @Body() dto: UpdateApplicationDto,
   ): Promise<Application> {
+    // ← MODIFICATION ICI : Si le statut change, utiliser updateApplicationStatus
+    if (dto.status && (dto.status === 'accepted' || dto.status === 'rejected')) {
+      return this.applicationService.updateApplicationStatus(id, dto.status);
+    }
+    // Sinon, utiliser la méthode update normale
     return this.applicationService.update(id, dto);
   }
 

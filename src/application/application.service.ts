@@ -5,17 +5,20 @@ import { Model } from 'mongoose';
 import { Application, ApplicationDocument } from './schemas/application.schema';
 import { CreateApplicationDto } from './dto/create-application.dto';
 import { UpdateApplicationDto } from './dto/update-application.dto';
+import { EmailService } from './email.service';
+import { Utilisateur, UtilisateurDocument } from '../utilisateurs/schemas/utilisateur.schema';
 
 @Injectable()
 export class ApplicationService {
   constructor(
     @InjectModel(Application.name)
     private readonly applicationModel: Model<ApplicationDocument>,
+    @InjectModel(Utilisateur.name)
+    private readonly userModel: Model<UtilisateurDocument>,
+    private readonly emailService: EmailService,
   ) {}
 
   // ---------- CREATE ----------
-  // On sauvegarde puis on populate('internshipId') pour que
-  // Android reçoive toujours un OBJET pour internshipId.
   async create(dto: CreateApplicationDto): Promise<Application> {
     const created = new this.applicationModel(dto);
     const saved = await created.save();
@@ -26,7 +29,47 @@ export class ApplicationService {
     return this.applicationModel.find().populate('internshipId').exec();
   }
 
-  /** ------- PAR ID MONGODB ------- */
+ async updateApplicationStatus(id: string, status: string) {
+  const application = await this.applicationModel
+    .findById(id)
+    .populate('internshipId')
+    .exec();
+
+  if (!application) {
+    throw new NotFoundException('Application not found');
+  }
+
+  application.status = status;
+  await application.save();
+
+  const user = await this.userModel.findById(application.userId).exec();
+  
+  if (!user) {
+    console.warn(`User not found for userId: ${application.userId}`);
+    return application;
+  }
+
+  const internship = application.internshipId as any;
+  const fullName = `${user.firstName || ''} ${user.lastName || ''}`.trim() || 'Étudiant';
+
+  console.log('📧 Tentative d\'envoi d\'email à:', user.email); // ← LOG AJOUTÉ
+  console.log('👤 Nom:', fullName); // ← LOG AJOUTÉ
+  console.log('💼 Stage:', internship.title); // ← LOG AJOUTÉ
+
+  try {
+    if (status === 'accepted') {
+      await this.emailService.sendAcceptanceEmail(user.email, fullName, internship.title);
+      console.log('✅ Email d\'acceptation envoyé avec succès'); // ← LOG AJOUTÉ
+    } else if (status === 'rejected') {
+      await this.emailService.sendRejectionEmail(user.email, fullName, internship.title);
+      console.log('✅ Email de rejet envoyé avec succès'); // ← LOG AJOUTÉ
+    }
+  } catch (error) {
+    console.error('❌ Erreur lors de l\'envoi de l\'email:', error); // ← LOG AJOUTÉ
+  }
+
+  return application;
+}
 
   async findOne(id: string): Promise<Application> {
     const app = await this.applicationModel
@@ -52,8 +95,6 @@ export class ApplicationService {
     if (!deleted) throw new NotFoundException('Application not found');
     return deleted;
   }
-
-  /** ---------- PAR IDENTIFIANT (matricule stocké dans userId) ---------- */
 
   async findByIdentifiant(identifiant: string): Promise<Application[]> {
     return this.applicationModel
