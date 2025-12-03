@@ -19,8 +19,18 @@ export class IsPresidentGuard implements CanActivate {
     }
 
     const isPresident = Boolean(user.presidentOf);
-    const isClubAccount = user.role === Role.Club;
+    // ✅ Accepter "CLUB" et "club" (case-insensitive)
+    const isClubAccount = user.role?.toUpperCase() === 'CLUB';
     const isAdmin = user.role === Role.Admin;
+
+    console.log('IsPresidentGuard check:', {
+      userRole: user.role,
+      isPresident,
+      isClubAccount,
+      isAdmin,
+      presidentOf: user.presidentOf,
+      club: user.club,
+    });
 
     if (!isPresident && !isClubAccount && !isAdmin) {
       throw new ForbiddenException(

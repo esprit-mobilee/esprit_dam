@@ -15,8 +15,18 @@ export class InternshipOffer {
   @Prop({ required: true })
   description: string;
 
-  @Prop()
-  location: string;
+  @Prop({
+    type: {
+      address: { type: String },
+      latitude: { type: Number },
+      longitude: { type: Number },
+    },
+  })
+  location?: {
+    address?: string;
+    latitude?: number;
+    longitude?: number;
+  };
 
   @Prop({ required: true })
   duration: number; // en semaines
@@ -24,10 +34,10 @@ export class InternshipOffer {
   @Prop()
   salary?: number;
   @Prop({ default: 0 })
-applicationsCount: number;
+  applicationsCount: number;
 
-@Prop({ default: 1 })
-positionsAvailable: number;
+  @Prop({ default: 1 })
+  positionsAvailable: number;
 
   @Prop()
   logoUrl?: string; // <-- nouveau champ pour le logo
@@ -37,17 +47,17 @@ positionsAvailable: number;
   @Prop()
   internshipType?: string;
 
- @Prop()
- procedure?: string;
+  @Prop()
+  procedure?: string;
 
- @Prop()
- interviewProcess?: string;
+  @Prop()
+  interviewProcess?: string;
 
- @Prop()
- startDate?: Date;
+  @Prop()
+  startDate?: Date;
 
- @Prop()
- interviewDetails?: string;
+  @Prop()
+  interviewDetails?: string;
 
 }
 

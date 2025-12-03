@@ -31,12 +31,12 @@ export class AllExceptionsFilter implements ExceptionFilter {
         // This is a validation error from class-validator
         const validationErrors = message.message;
         const formattedErrors: Record<string, string[]> = {};
-        
+
         validationErrors.forEach((error: string) => {
           // Parse error messages like "startDate: must be a valid ISO 8601 date string" or "startDate must be a valid ISO 8601 date string"
           const colonMatch = error.match(/^(\w+):\s*(.+)$/);
           const spaceMatch = error.match(/^(\w+)\s+(.+)$/);
-          
+
           if (colonMatch) {
             const field = colonMatch[1];
             const errorMsg = colonMatch[2];

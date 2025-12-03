@@ -34,15 +34,14 @@ import { Role } from 'src/auth/enums/role.enum';
 @Controller('events')
 @UseGuards(AuthenticationGuard, RolesGuard)
 export class EventsController {
-  constructor(private readonly eventsService: EventsService) {}
+  constructor(private readonly eventsService: EventsService) { }
 
   // ---------------------------------------------------------
   // ADMIN or PRESIDENT → create event
   // PRESIDENT checked by IsPresidentGuard
   // ---------------------------------------------------------
   @Post()
-  @UseGuards(IsPresidentGuard) // allow presidents too
-  @ApiOperation({ summary: 'Créer un nouvel événement (Admin/Président)' })
+  @ApiOperation({ summary: 'Créer un nouvel événement (Admin/Président/Club)' })
   @ApiConsumes('multipart/form-data')
   @UseInterceptors(FileInterceptor('image', multerOptions('events')))
   create(
@@ -50,9 +49,22 @@ export class EventsController {
     @Body() dto: CreateEventDto,
     @Req() req: any,
   ) {
+    const user = req.user;
+
+    // ✅ Vérification des permissions
+    const isAdmin = user.role === Role.Admin;
+    const isPresident = user.presidentOf != null;
+    const isClubAccount = user.role === Role.Club && user.club != null;
+
+    if (!isAdmin && !isPresident && !isClubAccount) {
+      throw new ForbiddenException(
+        'Only club presidents or club accounts can perform this action',
+      );
+    }
+
     // organizerId is ALWAYS owner
     dto.organizerId = req.user?.identifiant || req.user?.userId;
-    
+
     // Log for debugging
     console.log('Received event data:', {
       title: dto.title,
@@ -62,18 +74,28 @@ export class EventsController {
       description: dto.description,
       category: dto.category,
       organizerId: dto.organizerId,
+      userRole: user.role,
     });
-    
+
     return this.eventsService.create(dto, file);
   }
-
   // ---------------------------------------------------------
-  // PUBLIC : list all events
+  // PUBLIC : list all events with optional filtering/sorting/pagination
   // ---------------------------------------------------------
   @Get()
   @ApiOperation({ summary: 'Lister tous les événements' })
-  findAll() {
-    return this.eventsService.findAll();
+  findAll(
+    @Req() req: any,
+  ) {
+    const { search, sortBy, order, page, limit, category } = req.query;
+    return this.eventsService.findAll({
+      search,
+      sortBy: sortBy as 'date' | 'title' | 'category',
+      order: order as 'asc' | 'desc',
+      page: page ? parseInt(page) : undefined,
+      limit: limit ? parseInt(limit) : undefined,
+      category,
+    });
   }
 
   // ---------------------------------------------------------
@@ -90,8 +112,7 @@ export class EventsController {
   // PRESIDENT checked by IsPresidentGuard + ownership check
   // ---------------------------------------------------------
   @Put(':id')
-  @UseGuards(IsPresidentGuard)
-  @ApiOperation({ summary: 'Mettre à jour un événement (Admin/Président)' })
+  @ApiOperation({ summary: 'Mettre à jour un événement (Admin/Président/Club)' })
   @ApiConsumes('multipart/form-data')
   @UseInterceptors(FileInterceptor('image', multerOptions('events')))
   async update(
@@ -102,24 +123,30 @@ export class EventsController {
   ) {
     const user = req.user;
 
+    // ✅ Vérification des permissions
+    const isAdmin = user.role === Role.Admin;
+    const isPresident = user.presidentOf != null;
+    const isClubAccount = user.role === Role.Club && user.club != null;
+
+    if (!isAdmin && !isPresident && !isClubAccount) {
+      throw new ForbiddenException(
+        'Only club presidents or club accounts can perform this action',
+      );
+    }
     // Admin → always allowed
     if (user.role !== Role.Admin) {
       const event = await this.eventsService.findOne(id);
       const organizerId = (event.organizerId as any).toString();
-
       const userIdent = user.identifiant;
       const fallbackId = user.userId || user._id?.toString();
-
       const isOwner =
         organizerId === userIdent || organizerId === fallbackId;
-
       if (!isOwner) {
         throw new ForbiddenException(
           'Vous ne pouvez modifier que les événements de votre club.',
         );
       }
     }
-
     dto.organizerId = undefined;
     return this.eventsService.update(id, dto, file);
   }

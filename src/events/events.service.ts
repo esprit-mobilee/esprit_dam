@@ -49,24 +49,90 @@ export class EventsService {
 
     const imageUrl = file ? `/uploads/events/${file.filename}` : null;
 
+    // Parse tags from comma-separated string
+    const tags = dto.tags ? dto.tags.split(',').map(tag => tag.trim()).filter(tag => tag.length > 0) : [];
+
+    // Build location object if coordinates are provided
+    let location: { address?: string; latitude?: number; longitude?: number } | undefined = undefined;
+    if (dto.location || dto.latitude !== undefined || dto.longitude !== undefined) {
+      location = {
+        address: dto.location,
+        latitude: dto.latitude,
+        longitude: dto.longitude,
+      };
+    }
+
     const event = new this.eventModel({
       title: dto.title,
       description: dto.description ?? '',
       startDate: startDate,
       endDate: endDate,
-      location: dto.location ?? '',
+      location,
       organizerId: dto.organizerId,
       category: dto.category ?? '',
+      tags,
       imageUrl,
     });
 
     return event.save();
   }
 
-  async findAll(): Promise<Event[]> {
-    return this.eventModel
-      .find()
+  async findAll(options?: {
+    search?: string;
+    sortBy?: 'date' | 'title' | 'category';
+    order?: 'asc' | 'desc';
+    page?: number;
+    limit?: number;
+    category?: string;
+  }): Promise<Event[] | { events: Event[]; total: number; page: number; totalPages: number }> {
+    const { search, sortBy = 'date', order = 'desc', page, limit, category } = options || {};
+
+    // Build query
+    const query: any = {};
+
+    if (search) {
+      query.$or = [
+        { title: { $regex: search, $options: 'i' } },
+        { description: { $regex: search, $options: 'i' } },
+        { 'location.address': { $regex: search, $options: 'i' } },
+      ];
+    }
+
+    if (category) {
+      query.category = category;
+    }
+
+    // Build sort
+    const sortField = sortBy === 'date' ? 'startDate' : sortBy;
+    const sortOrder = order === 'asc' ? 1 : -1;
+
+    // If no pagination params, return simple array (backward compatibility)
+    if (!page && !limit) {
+      return this.eventModel
+        .find(query)
+        .sort({ [sortField]: sortOrder })
+        .exec();
+    }
+
+    // With pagination
+    const pageNum = page || 1;
+    const limitNum = limit || 10;
+
+    const total = await this.eventModel.countDocuments(query);
+
+    const events = await this.eventModel
+      .find(query)
+      .sort({ [sortField]: sortOrder })
+      .skip((pageNum - 1) * limitNum)
+      .limit(limitNum)
       .exec();
+
+    return {
+      events,
+      total,
+      page: pageNum,
+      totalPages: Math.ceil(total / limitNum),
+    };
   }
 
   async findOne(id: string): Promise<Event> {
@@ -118,9 +184,22 @@ export class EventsService {
     if (dto.description !== undefined) event.description = dto.description;
     if (dto.startDate !== undefined) event.startDate = nextStartDate;
     if (dto.endDate !== undefined) event.endDate = nextEndDate;
-    if (dto.location !== undefined) event.location = dto.location;
+
+    // Update location object if any location field is provided
+    if (dto.location !== undefined || dto.latitude !== undefined || dto.longitude !== undefined) {
+      event.location = {
+        address: dto.location ?? event.location?.address,
+        latitude: dto.latitude ?? event.location?.latitude,
+        longitude: dto.longitude ?? event.location?.longitude,
+      };
+    }
+
     // Ne pas laisser modifier l'organizerId
     if (dto.category !== undefined) event.category = dto.category;
+    if (dto.tags !== undefined) {
+      const tags = dto.tags.split(',').map(tag => tag.trim()).filter(tag => tag.length > 0);
+      event.tags = tags;
+    }
     if (file) event.imageUrl = `/uploads/events/${file.filename}`;
 
     await event.save();

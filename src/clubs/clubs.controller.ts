@@ -136,6 +136,18 @@ export class ClubsController {
   }
 
   // --------------------------------------------------------------------
+  // STUDENT → Join club (if enabled)
+  // --------------------------------------------------------------------
+  @Post(':clubId/join-request')
+  async requestJoinClub(
+    @Param('clubId') clubId: string,
+    @Body() body: { answers?: Array<{ question: string; answer: string }> },
+    @Req() req: any,
+  ) {
+    return this.clubsService.studentJoinClub(clubId, req.user.userId, body.answers);
+  }
+
+  // --------------------------------------------------------------------
   // PRESIDENT OR ADMIN → Remove member
   // --------------------------------------------------------------------
   @Post(':clubId/leave/:userId')
@@ -168,6 +180,94 @@ export class ClubsController {
   @Get(':clubId/members')
   getMembers(@Param('clubId') clubId: string) {
     return this.clubsService.getMembers(clubId);
+  }
+
+  // --------------------------------------------------------------------
+  // PRESIDENT OR ADMIN → Update club settings (join form questions)
+  // --------------------------------------------------------------------
+  @Put(':id/settings')
+  @UseGuards(IsPresidentGuard)
+  async updateSettings(
+    @Param('id') id: string,
+    @Body() body: { joinEnabled?: boolean; joinFormQuestions?: string[] },
+    @Req() req: any,
+  ) {
+    const user = req.user;
+
+    // Admin can manage any club
+    if (user.role === Role.Admin) {
+      return this.clubsService.updateSettings(id, body);
+    }
+
+    // Student-president can manage ONLY his club
+    const managedClubId = user.club ?? user.presidentOf;
+    if (String(managedClubId) !== id) {
+      throw new ForbiddenException(
+        'Vous ne pouvez gérer que votre propre club.',
+      );
+    }
+
+    return this.clubsService.updateSettings(id, body);
+  }
+
+  // --------------------------------------------------------------------
+  // STUDENT → Check join request status for a club
+  // --------------------------------------------------------------------
+  @Get(':clubId/join-request-status')
+  async checkJoinRequestStatus(
+    @Param('clubId') clubId: string,
+    @Req() req: any,
+  ) {
+    return this.clubsService.checkJoinRequestStatus(clubId, req.user.userId);
+  }
+
+  // --------------------------------------------------------------------
+  // PRESIDENT OR ADMIN → Get pending join requests
+  // --------------------------------------------------------------------
+  @Get(':clubId/join-requests/pending')
+  @UseGuards(IsPresidentGuard)
+  async getPendingRequests(
+    @Param('clubId') clubId: string,
+    @Req() req: any,
+  ) {
+    const user = req.user;
+
+    // Admin can view any club's requests
+    if (user.role === Role.Admin) {
+      return this.clubsService.getPendingRequests(clubId);
+    }
+
+    // Student-president can view ONLY his club's requests
+    const managedClubId = user.club ?? user.presidentOf;
+    if (String(managedClubId) !== clubId) {
+      throw new ForbiddenException(
+        'Vous ne pouvez voir que les demandes de votre propre club.',
+      );
+    }
+
+    return this.clubsService.getPendingRequests(clubId);
+  }
+
+  // --------------------------------------------------------------------
+  // PRESIDENT OR ADMIN → Approve join request
+  // --------------------------------------------------------------------
+  @Post('join-requests/:requestId/approve')
+  @UseGuards(IsPresidentGuard)
+  async approveJoinRequest(
+    @Param('requestId') requestId: string,
+  ) {
+    return this.clubsService.approveJoinRequest(requestId);
+  }
+
+  // --------------------------------------------------------------------
+  // PRESIDENT OR ADMIN → Reject join request
+  // --------------------------------------------------------------------
+  @Post('join-requests/:requestId/reject')
+  @UseGuards(IsPresidentGuard)
+  async rejectJoinRequest(
+    @Param('requestId') requestId: string,
+  ) {
+    return this.clubsService.rejectJoinRequest(requestId);
   }
 
   // --------------------------------------------------------------------

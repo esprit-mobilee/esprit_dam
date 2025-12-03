@@ -52,7 +52,6 @@ export class PostsService {
       text,
       imageUrl,
       authorId: user._id,
-      likes: 0,
     });
 
     return post;
@@ -111,16 +110,114 @@ export class PostsService {
     return { message: 'Publication supprimée' };
   }
 
-  // Get all posts of a club
-  async getPostsByClub(clubId: string): Promise<Post[]> {
+  // Get single post by ID
+  async getPostById(postId: string): Promise<Post> {
+    const post = await this.postModel
+      .findById(postId)
+      .populate('authorId', 'firstName lastName email')
+      .populate('clubId', 'name imageUrl')
+      .populate('comments.userId', 'firstName lastName email')
+      .exec();
+
+    if (!post) {
+      throw new NotFoundException('Publication introuvable');
+    }
+
+    return post;
+  }
+
+  // Get all posts (Global Feed) with optional search/pagination
+  async getAllPosts(
+    options?: { search?: string; page?: number; limit?: number }
+  ): Promise<Post[] | { posts: Post[]; total: number; page: number; totalPages: number }> {
+    const { search, page, limit } = options || {};
+
+    const query: any = {};
+
+    if (search) {
+      query.text = { $regex: search, $options: 'i' };
+    }
+
+    // If no pagination requested, return all (backward compatibility)
+    if (!page && !limit) {
+      return this.postModel
+        .find(query)
+        .populate('authorId', 'firstName lastName email')
+        .populate('clubId', 'name imageUrl')
+        .sort({ createdAt: -1 })
+        .exec();
+    }
+
+    // Pagination defaults
+    const pageNum = page || 1;
+    const limitNum = limit || 10;
+
+    const total = await this.postModel.countDocuments(query);
+
+    const posts = await this.postModel
+      .find(query)
+      .populate('authorId', 'firstName lastName email')
+      .populate('clubId', 'name imageUrl')
+      .sort({ createdAt: -1 })
+      .skip((pageNum - 1) * limitNum)
+      .limit(limitNum)
+      .exec();
+
+    return {
+      posts,
+      total,
+      page: pageNum,
+      totalPages: Math.ceil(total / limitNum),
+    };
+  }
+
+  // Get all posts of a club with optional search/pagination
+  async getPostsByClub(
+    clubId: string,
+    options?: { search?: string; page?: number; limit?: number }
+  ): Promise<Post[] | { posts: Post[]; total: number; page: number; totalPages: number }> {
     const club = await this.clubModel.findById(clubId);
     if (!club) throw new NotFoundException('Club introuvable');
 
-    return this.postModel
-      .find({ clubId: new Types.ObjectId(clubId) })
-      .sort({ createdAt: -1 })
+    const { search, page, limit } = options || {};
+
+    const query: any = { clubId: new Types.ObjectId(clubId) };
+
+    if (search) {
+      query.text = { $regex: search, $options: 'i' };
+    }
+
+    // If no pagination requested, return all (backward compatibility)
+    if (!page && !limit) {
+      return this.postModel
+        .find(query)
+        .populate('authorId', 'firstName lastName email')
+        .populate('clubId', 'name imageUrl')
+        .sort({ createdAt: -1 })
+        .exec();
+    }
+
+    // Pagination defaults
+    const pageNum = page || 1;
+    const limitNum = limit || 10;
+
+    const total = await this.postModel.countDocuments(query);
+
+    const posts = await this.postModel
+      .find(query)
       .populate('authorId', 'firstName lastName email')
+      .populate('clubId', 'name imageUrl')
+      .sort({ createdAt: -1 })
+      .skip((pageNum - 1) * limitNum)
+      .limit(limitNum)
       .exec();
+
+    return {
+      posts,
+      total,
+      page: pageNum,
+      totalPages: Math.ceil(total / limitNum),
+    };
   }
   async likePost(postId: string, userId: string): Promise<Post> {
     const post = await this.postModel.findById(postId);
@@ -178,6 +275,135 @@ export class PostsService {
     if (!user) throw new NotFoundException('Utilisateur introuvable');
 
     post.comments.push({
+      userId: new Types.ObjectId(userId),
+      userName: `${user.firstName} ${user.lastName}`,
+      userAvatar: user.avatar,
+      content,
+      createdAt: new Date()
+    });
+
+    await post.save();
+    return post;
+  }
+
+  // Update a comment
+  async updateComment(
+    postId: string,
+    commentId: string,
+    userId: string,
+    newContent: string
+  ): Promise<Post> {
+    const post = await this.postModel.findById(postId);
+    if (!post) throw new NotFoundException('Publication introuvable');
+
+    const comment = post.comments.find(c => c._id?.toString() === commentId);
+    if (!comment) throw new NotFoundException('Commentaire introuvable');
+
+    // Only the comment author can update it
+    if (comment.userId.toString() !== userId) {
+      throw new ForbiddenException('Vous ne pouvez modifier que vos propres commentaires');
+    }
+
+    comment.content = newContent;
+    await post.save();
+    return post;
+  }
+
+  // Delete a comment
+  async deleteComment(
+    postId: string,
+    commentId: string,
+    userId: string
+  ): Promise<Post> {
+    const post = await this.postModel.findById(postId);
+    if (!post) throw new NotFoundException('Publication introuvable');
+
+    const commentIndex = post.comments.findIndex(c => c._id?.toString() === commentId);
+    if (commentIndex === -1) throw new NotFoundException('Commentaire introuvable');
+
+    const comment = post.comments[commentIndex];
+
+    // Only the comment author can delete it
+    if (comment.userId.toString() !== userId) {
+      throw new ForbiddenException('Vous ne pouvez supprimer que vos propres commentaires');
+    }
+
+    post.comments.splice(commentIndex, 1);
+    await post.save();
+    return post;
+  }
+
+  // React to a comment with an emoji
+  async reactToComment(
+    postId: string,
+    commentId: string,
+    userId: string,
+    emoji: string
+  ): Promise<Post> {
+    const post = await this.postModel.findById(postId);
+    if (!post) throw new NotFoundException('Publication introuvable');
+
+    const comment = post.comments.find(c => c._id?.toString() === commentId);
+    if (!comment) throw new NotFoundException('Commentaire introuvable');
+
+    // Initialize reactions array if it doesn't exist
+    if (!comment.reactions) {
+      comment.reactions = [];
+    }
+
+    const userObjectId = new Types.ObjectId(userId);
+
+    // Check if user already reacted with this emoji
+    const existingReactionIndex = comment.reactions.findIndex(
+      r => r.userId.toString() === userId && r.emoji === emoji
+    );
+
+    if (existingReactionIndex > -1) {
+      // Remove reaction (toggle off)
+      comment.reactions.splice(existingReactionIndex, 1);
+    } else {
+      // Remove any other reaction from this user first (one reaction per user)
+      const userReactionIndex = comment.reactions.findIndex(
+        r => r.userId.toString() === userId
+      );
+      if (userReactionIndex > -1) {
+        comment.reactions.splice(userReactionIndex, 1);
+      }
+
+      // Add new reaction
+      comment.reactions.push({
+        userId: userObjectId,
+        emoji
+      });
+    }
+
+    await post.save();
+    return post;
+  }
+
+  // Reply to a comment
+  async replyToComment(
+    postId: string,
+    commentId: string,
+    userId: string,
+    content: string
+  ): Promise<Post> {
+    const post = await this.postModel.findById(postId);
+    if (!post) throw new NotFoundException('Publication introuvable');
+
+    const comment = post.comments.find(c => c._id?.toString() === commentId);
+    if (!comment) throw new NotFoundException('Commentaire introuvable');
+
+    const user = await this.userModel.findById(userId);
+    if (!user) throw new NotFoundException('Utilisateur introuvable');
+
+    // Initialize replies array if it doesn't exist
+    if (!comment.replies) {
+      comment.replies = [];
+    }
+
+    // Add reply to comment
+    comment.replies.push({
       userId: new Types.ObjectId(userId),
       userName: `${user.firstName} ${user.lastName}`,
       userAvatar: user.avatar,

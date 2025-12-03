@@ -15,8 +15,18 @@ export class Event extends Document {
   @Prop({ required: true })
   endDate: Date;
 
-  @Prop()
-  location?: string;
+  @Prop({
+    type: {
+      address: { type: String },
+      latitude: { type: Number },
+      longitude: { type: Number },
+    },
+  })
+  location?: {
+    address?: string;
+    latitude?: number;
+    longitude?: number;
+  };
 
   // Identifiant (login) du président créateur, pas l'ObjectId Mongo
   @Prop({ required: true })
@@ -24,6 +34,9 @@ export class Event extends Document {
 
   @Prop()
   category?: string;
+
+  @Prop({ type: [String], default: [] })
+  tags: string[];
 
   @Prop()
   imageUrl?: string;

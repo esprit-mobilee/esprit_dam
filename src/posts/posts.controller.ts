@@ -56,10 +56,49 @@ export class PostsController {
     );
   }
 
-  // PUBLIC: get posts of a club
+  // PUBLIC: get all posts (Global Feed)
+  @Get()
+  async getAllPosts(@Req() req: any) {
+    const { search, page, limit } = req.query;
+    return this.postsService.getAllPosts({
+      search,
+      page: page ? parseInt(page) : undefined,
+      limit: limit ? parseInt(limit) : undefined,
+    });
+  }
+
+  // PUBLIC: get posts of a club with optional search/pagination
   @Get('club/:clubId')
-  async getClubPosts(@Param('clubId') clubId: string) {
-    return this.postsService.getPostsByClub(clubId);
+  async getClubPosts(
+    @Param('clubId') clubId: string,
+    @Req() req: any,
+  ) {
+    const { search, page, limit } = req.query;
+    return this.postsService.getPostsByClub(clubId, {
+      search,
+      page: page ? parseInt(page) : undefined,
+      limit: limit ? parseInt(limit) : undefined,
+    });
+  }
+
+  // PUBLIC: get single post by ID
+  @Get('detail/:id')
+  async getPostById(@Param('id') id: string) {
+    return this.postsService.getPostById(id);
+  }
+
+  // COMPATIBILITY: alias for getClubPosts to support iOS app using /api/posts/:clubId
+  @Get(':clubId')
+  async getClubPostsAlias(
+    @Param('clubId') clubId: string,
+    @Req() req: any,
+  ) {
+    const { search, page, limit } = req.query;
+    return this.postsService.getPostsByClub(clubId, {
+      search,
+      page: page ? parseInt(page) : undefined,
+      limit: limit ? parseInt(limit) : undefined,
+    });
   }
 
   // PRESIDENT/CLUB: update post
@@ -108,5 +147,67 @@ export class PostsController {
     @Req() req: any,
   ) {
     return this.postsService.commentPost(postId, req.user.userId, content);
+  }
+
+  // PUBLIC: update own comment
+  @Put(':postId/comments/:commentId')
+  async updateComment(
+    @Param('postId') postId: string,
+    @Param('commentId') commentId: string,
+    @Body('content') content: string,
+    @Req() req: any,
+  ) {
+    return this.postsService.updateComment(
+      postId,
+      commentId,
+      req.user.userId,
+      content
+    );
+  }
+
+  // PUBLIC: delete own comment
+  @Delete(':postId/comments/:commentId')
+  async deleteComment(
+    @Param('postId') postId: string,
+    @Param('commentId') commentId: string,
+    @Req() req: any,
+  ) {
+    return this.postsService.deleteComment(
+      postId,
+      commentId,
+      req.user.userId
+    );
+  }
+
+  // PUBLIC: react to comment with emoji
+  @Post(':postId/comments/:commentId/react')
+  async reactToComment(
+    @Param('postId') postId: string,
+    @Param('commentId') commentId: string,
+    @Body('emoji') emoji: string,
+    @Req() req: any,
+  ) {
+    return this.postsService.reactToComment(
+      postId,
+      commentId,
+      req.user.userId,
+      emoji
+    );
+  }
+
+  // PUBLIC: reply to a comment
+  @Post(':postId/comments/:commentId/reply')
+  async replyToComment(
+    @Param('postId') postId: string,
+    @Param('commentId') commentId: string,
+    @Body('content') content: string,
+    @Req() req: any,
+  ) {
+    return this.postsService.replyToComment(
+      postId,
+      commentId,
+      req.user.userId,
+      content
+    );
   }
 }

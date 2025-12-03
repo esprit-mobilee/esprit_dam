@@ -1,5 +1,5 @@
 import { ApiProperty } from '@nestjs/swagger';
-import { IsString, IsOptional, IsNumber, IsArray, IsDateString } from 'class-validator';
+import { IsString, IsOptional, IsNumber, IsArray, IsDateString, Min, Max } from 'class-validator';
 import { Type } from 'class-transformer';
 
 export class CreateInternshipOfferDto {
@@ -18,6 +18,28 @@ export class CreateInternshipOfferDto {
   @IsOptional()
   @IsString()
   location?: string;
+
+  @ApiProperty({
+    example: 36.8065,
+    description: 'Latitude coordinate for the internship location',
+    required: false
+  })
+  @IsOptional()
+  @IsNumber()
+  @Min(-90)
+  @Max(90)
+  latitude?: number;
+
+  @ApiProperty({
+    example: 10.1815,
+    description: 'Longitude coordinate for the internship location',
+    required: false
+  })
+  @IsOptional()
+  @IsNumber()
+  @Min(-180)
+  @Max(180)
+  longitude?: number;
 
   @Type(() => Number)
   @IsNumber()
@@ -55,16 +77,16 @@ export class CreateInternshipOfferDto {
   @IsDateString()
   startDate?: Date;
   @ApiProperty({ example: 0, required: false })
-@IsOptional()
-@Type(() => Number)
-@IsNumber()
-applicationsCount?: number;
+  @IsOptional()
+  @Type(() => Number)
+  @IsNumber()
+  applicationsCount?: number;
 
-@ApiProperty({ example: 5, required: false })
-@IsOptional()
-@Type(() => Number)
-@IsNumber()
-positionsAvailable?: number;
+  @ApiProperty({ example: 5, required: false })
+  @IsOptional()
+  @Type(() => Number)
+  @IsNumber()
+  positionsAvailable?: number;
 
 
   @ApiProperty({ example: 'meet.google.com/xyz', required: false })

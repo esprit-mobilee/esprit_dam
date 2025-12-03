@@ -13,13 +13,27 @@ export class InternshipOfferService {
   constructor(
     @InjectModel(InternshipOffer.name)
     private readonly offerModel: Model<InternshipOfferDocument>,
-  ) {}
+  ) { }
 
   // ==========================================================
   // =                        CREATE                          =
   // ==========================================================
   async create(dto: CreateInternshipOfferDto): Promise<InternshipOffer> {
-    const created = new this.offerModel(dto);
+    // Build location object if coordinates are provided
+    let location: { address?: string; latitude?: number; longitude?: number } | undefined = undefined;
+    if (dto.location || dto.latitude !== undefined || dto.longitude !== undefined) {
+      location = {
+        address: dto.location,
+        latitude: dto.latitude,
+        longitude: dto.longitude,
+      };
+    }
+
+    const { latitude, longitude, ...dtoWithoutCoords } = dto;
+    const created = new this.offerModel({
+      ...dtoWithoutCoords,
+      location,
+    });
     return created.save();
   }
 

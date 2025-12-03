@@ -4,16 +4,19 @@ import { ClubsService } from './clubs.service';
 import { ClubsController } from './clubs.controller';
 import { AdminClubsController } from './admin-clubs.controller';
 import { Club, ClubSchema } from './schemas/club.schema';
+import { JoinRequest, JoinRequestSchema } from './schemas/join-request.schema';
 import { Utilisateur, UtilisateurSchema } from 'src/utilisateurs/schemas/utilisateur.schema';
 import { Event, EventSchema } from 'src/events/schemas/event.schema';
 import { Post, PostSchema } from 'src/posts/schemas/post.schema';
 import { ClubPortalController } from './club-portal.controller';
 import { NotificationsModule } from 'src/notifications/notifications.module';
+import { EmailService } from 'src/application/email.service'; // ← AJOUTE CECI (ajuste le chemin si nécessaire)
 
 @Module({
   imports: [
     MongooseModule.forFeature([
       { name: Club.name, schema: ClubSchema },
+      { name: JoinRequest.name, schema: JoinRequestSchema },
       { name: Utilisateur.name, schema: UtilisateurSchema },
       { name: Event.name, schema: EventSchema },
       { name: Post.name, schema: PostSchema },
@@ -21,7 +24,7 @@ import { NotificationsModule } from 'src/notifications/notifications.module';
     NotificationsModule,
   ],
   controllers: [ClubsController, AdminClubsController, ClubPortalController],
-  providers: [ClubsService],
-  exports: [ClubsService], // ✅ exported so EventsModule & AuthModule can use it
+  providers: [ClubsService, EmailService], // ← AJOUTE EmailService ICI
+  exports: [ClubsService],
 })
 export class ClubsModule { }

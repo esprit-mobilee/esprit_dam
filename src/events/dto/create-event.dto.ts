@@ -1,4 +1,4 @@
-import { IsString, IsNotEmpty, IsOptional, Matches } from 'class-validator';
+import { IsString, IsNotEmpty, IsOptional, Matches, IsNumber, Min, Max } from 'class-validator';
 import { ApiProperty } from '@nestjs/swagger';
 import { Transform } from 'class-transformer';
 
@@ -15,7 +15,7 @@ export class CreateEventDto {
   @Transform(({ value }) => (typeof value === 'string' ? value.trim() : value))
   description?: string;
 
-  @ApiProperty({ 
+  @ApiProperty({
     example: '2025-12-10T09:00:00Z',
     description: 'Date de début au format ISO 8601 (ex: 2025-12-10T09:00:00Z)'
   })
@@ -27,7 +27,7 @@ export class CreateEventDto {
   })
   startDate: string;
 
-  @ApiProperty({ 
+  @ApiProperty({
     example: '2025-12-12T17:00:00Z',
     description: 'Date de fin au format ISO 8601 (ex: 2025-12-12T17:00:00Z)'
   })
@@ -46,6 +46,28 @@ export class CreateEventDto {
   location?: string;
 
   @ApiProperty({
+    example: 36.8983,
+    description: 'Latitude coordinate for the event location',
+    required: false
+  })
+  @IsOptional()
+  @IsNumber()
+  @Min(-90)
+  @Max(90)
+  latitude?: number;
+
+  @ApiProperty({
+    example: 10.1894,
+    description: 'Longitude coordinate for the event location',
+    required: false
+  })
+  @IsOptional()
+  @IsNumber()
+  @Min(-180)
+  @Max(180)
+  longitude?: number;
+
+  @ApiProperty({
     example: 'PR12345',
     description: "Identifiant du président (login), pas l'ObjectId. Défini automatiquement par le backend.",
     required: false,
@@ -60,6 +82,16 @@ export class CreateEventDto {
   @IsString()
   @Transform(({ value }) => (typeof value === 'string' ? value.trim() : value))
   category?: string;
+
+  @ApiProperty({
+    example: 'Tech,AI,Workshop',
+    description: 'Tags séparés par des virgules',
+    required: false
+  })
+  @IsOptional()
+  @IsString()
+  @Transform(({ value }) => (typeof value === 'string' ? value.trim() : value))
+  tags?: string;
 
   @ApiProperty({
     type: 'string',

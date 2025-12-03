@@ -28,6 +28,9 @@ export class Club extends Document {
   @Prop({ default: true })
   joinEnabled: boolean;
 
+  @Prop({ type: [String], default: [] })
+  joinFormQuestions: string[];
+
   @Prop({ type: Types.ObjectId, ref: Utilisateur.name, default: null })
   account?: Types.ObjectId | null;
 }
