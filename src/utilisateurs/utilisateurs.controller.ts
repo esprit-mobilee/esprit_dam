@@ -22,7 +22,7 @@ import { ChangePasswordDto } from 'src/auth/dtos/change-password.dto';
 
 @Controller('utilisateurs')
 export class UtilisateursController {
-  constructor(private readonly utilisateursService: UtilisateursService) {}
+  constructor(private readonly utilisateursService: UtilisateursService) { }
 
   @Post()
   create(@Body() createUtilisateurDto: CreateUtilisateurDto) {

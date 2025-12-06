@@ -19,7 +19,7 @@ export class UtilisateursService {
   constructor(
     @InjectModel(Utilisateur.name)
     private readonly utilisateurModel: Model<UtilisateurDocument>,
-  ) {}
+  ) { }
 
   // CREATE
   async create(createUtilisateurDto: CreateUtilisateurDto): Promise<Utilisateur> {

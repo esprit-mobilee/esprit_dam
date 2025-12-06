@@ -27,6 +27,25 @@ export class Application extends Document {
 
   @Prop({ default: Date.now })
   submittedAt: Date;
+
+  // Interview information for Google Calendar integration
+  @Prop({
+    type: {
+      scheduledAt: Date,
+      googleEventId: String,
+      meetingLink: String,
+      notes: String,
+      status: { type: String, enum: ['scheduled', 'completed', 'cancelled'] }
+    },
+    required: false
+  })
+  interview?: {
+    scheduledAt?: Date;
+    googleEventId?: string;
+    meetingLink?: string;
+    notes?: string;
+    status?: 'scheduled' | 'completed' | 'cancelled';
+  };
 }
 
 export type ApplicationDocument = Application & Document;

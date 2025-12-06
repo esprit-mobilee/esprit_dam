@@ -5,15 +5,17 @@ import { ApplicationController } from './application.controller';
 import { Application, ApplicationSchema } from './schemas/application.schema';
 import { EmailService } from './email.service';
 import { Utilisateur, UtilisateurSchema } from '../utilisateurs/schemas/utilisateur.schema';
+import { CalendarModule } from '../calendar/calendar.module';
 
 @Module({
   imports: [
     MongooseModule.forFeature([
       { name: Application.name, schema: ApplicationSchema },
       { name: Utilisateur.name, schema: UtilisateurSchema },
-    ])
+    ]),
+    CalendarModule,
   ],
   controllers: [ApplicationController],
   providers: [ApplicationService, EmailService],
 })
-export class ApplicationModule {}
+export class ApplicationModule { }

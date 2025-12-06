@@ -22,4 +22,16 @@ export class UpdateApplicationDto extends PartialType(CreateApplicationDto) {
   @IsOptional()
   @IsString()
   coverLetter?: string;
+
+  @ApiPropertyOptional({
+    description: 'Interview information from Google Calendar',
+  })
+  @IsOptional()
+  interview?: {
+    scheduledAt?: Date;
+    googleEventId?: string;
+    meetingLink?: string;
+    notes?: string;
+    status?: 'scheduled' | 'completed' | 'cancelled';
+  };
 }
