@@ -32,13 +32,14 @@ import { FileInterceptor } from '@nestjs/platform-express';
 import { diskStorage } from 'multer';
 import { v4 as uuid } from 'uuid';
 import { extname } from 'path';
+import type { Express } from 'express';
 
 @ApiBearerAuth('access-token')
 @UseGuards(AuthenticationGuard, RolesGuard)
 @ApiTags('Internship Offers')
 @Controller('internship-offers')
 export class InternshipOfferController {
-  constructor(private readonly internshipService: InternshipOfferService) {}
+  constructor(private readonly internshipService: InternshipOfferService) { }
 
   // --------- CREATE (ADMIN) + upload logo ----------
   @Post()
