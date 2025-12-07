@@ -47,7 +47,7 @@ export class EventsService {
       throw new BadRequestException('organizerId est requis');
     }
 
-    const imageUrl = file ? `/uploads/events/${file.filename}` : null;
+    const imageUrl = file ? `/api/uploads/events/${file.filename}` : null;
 
     // Parse tags from comma-separated string
     const tags = dto.tags ? dto.tags.split(',').map(tag => tag.trim()).filter(tag => tag.length > 0) : [];
@@ -200,7 +200,7 @@ export class EventsService {
       const tags = dto.tags.split(',').map(tag => tag.trim()).filter(tag => tag.length > 0);
       event.tags = tags;
     }
-    if (file) event.imageUrl = `/uploads/events/${file.filename}`;
+    if (file) event.imageUrl = `/api/uploads/events/${file.filename}`;
 
     await event.save();
     return this.findOne(id);

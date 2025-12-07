@@ -66,33 +66,33 @@ export class DocumentRequestService {
       throw new NotFoundException('Utilisateur introuvable');
     }
 
-  // 1️⃣ Créer la demande de document
-  const documentRequest = await this.documentRequestModel.create({
-    userId: new Types.ObjectId(userId),
-    type: createDto.type,
-    annee: createDto.annee,
-  });
+    // 1️⃣ Créer la demande de document
+    const documentRequest = await this.documentRequestModel.create({
+      userId: new Types.ObjectId(userId),
+      type: createDto.type,
+      annee: createDto.annee,
+    });
 
-  // 2️⃣ Chercher le fichier existant dans DocumentFile
-  const documentFile = await this.documentFileModel.findOne({
-    userId: new Types.ObjectId(userId),
-    type: createDto.type,
-    annee: createDto.annee,
-  });
+    // 2️⃣ Chercher le fichier existant dans DocumentFile
+    const documentFile = await this.documentFileModel.findOne({
+      userId: new Types.ObjectId(userId),
+      type: createDto.type,
+      annee: createDto.annee,
+    });
 
-  // 2️⃣a️⃣ Lier le documentFile à la nouvelle documentRequest
-  if (documentFile) {
-  documentFile.documentRequestId = documentRequest._id as Types.ObjectId;
-  await documentFile.save();
-}
+    // 2️⃣a️⃣ Lier le documentFile à la nouvelle documentRequest
+    if (documentFile) {
+      documentFile.documentRequestId = documentRequest._id as Types.ObjectId;
+      await documentFile.save();
+    }
 
 
-  // 3️⃣ Retourner la demande + l'URL trouvée
-  return {
-    documentRequest: await this.findOne(String(documentRequest._id)),
-    fileUrl: documentFile?.url || null,
-  };
-}
+    // 3️⃣ Retourner la demande + l'URL trouvée
+    return {
+      documentRequest: await this.findOne(String(documentRequest._id)),
+      fileUrl: documentFile?.url || null,
+    };
+  }
 
 
   /**
@@ -153,15 +153,15 @@ export class DocumentRequestService {
       .exec();
   }
   async findAllWithUserDetails() {
-  return this.documentRequestModel
-    .find()
-    .populate({
-      path: 'userId',
-      select: 'firstName lastName email studentId inscriptionPaid'  // Ajouter inscriptionPaid
-    })
-    .sort({ createdAt: -1 })
-    .exec();
-}
+    return this.documentRequestModel
+      .find()
+      .populate({
+        path: 'userId',
+        select: 'firstName lastName email studentId inscriptionPaid'  // Ajouter inscriptionPaid
+      })
+      .sort({ createdAt: -1 })
+      .exec();
+  }
 
   /**
    * 📥 Récupérer l'URL d'un fichier spécifique par son ID
@@ -223,7 +223,7 @@ export class DocumentRequestService {
 
     return { message: 'Demande de document supprimée avec succès' };
   }
-   
+
   /**
    * 👮‍♂️ Mettre à jour le statut d'une demande (Admin)
    */
@@ -255,7 +255,7 @@ export class DocumentRequestService {
 
     // 1. Sauvegarder le fichier dans DocumentFile
     // On utilise une URL relative ou absolue selon la config. Ici on suppose que le serveur sert les fichiers statiques.
-    const fileUrl = `${process.env.API_URL || 'http://localhost:3000'}/uploads/documents/${file.filename}`;
+    const fileUrl = `${process.env.API_URL || 'http://localhost:3000'}/api/uploads/documents/${file.filename}`;
 
     await this.documentFileModel.create({
       userId: request.userId,
@@ -319,28 +319,28 @@ export class DocumentRequestService {
   }
 
 
-/**
- * 📥 Récupérer un fichier selon userId, type et année
- */
-async getFileByUserTypeAndYear(
-  userId: string,
-  type: DocumentType,
-  annee: string
-): Promise<DocumentFile> {
-  const file = await this.documentFileModel.findOne({
-    userId: new Types.ObjectId(userId),
-    type,
-    annee
-  }).populate('userId', 'firstName lastName email studentId');
+  /**
+   * 📥 Récupérer un fichier selon userId, type et année
+   */
+  async getFileByUserTypeAndYear(
+    userId: string,
+    type: DocumentType,
+    annee: string
+  ): Promise<DocumentFile> {
+    const file = await this.documentFileModel.findOne({
+      userId: new Types.ObjectId(userId),
+      type,
+      annee
+    }).populate('userId', 'firstName lastName email studentId');
 
-  if (!file) {
-    throw new NotFoundException(
-      `Fichier pour l'utilisateur ${userId}, type ${type}, année ${annee} introuvable`
-    );
+    if (!file) {
+      throw new NotFoundException(
+        `Fichier pour l'utilisateur ${userId}, type ${type}, année ${annee} introuvable`
+      );
+    }
+
+    return file;
   }
 
-  return file;
+
 }
-
-
-  }

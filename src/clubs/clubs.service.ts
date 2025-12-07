@@ -36,7 +36,7 @@ export class ClubsService {
   // --------------------------------------------------------
   async createFullClub(dto: CreateFullClubDto, file?: Express.Multer.File) {
     const tagsArray = this.extractTags(dto.tags);
-    const imageUrl = file ? `/uploads/clubs/${file.filename}` : null;
+    const imageUrl = file ? `/api/uploads/clubs/${file.filename}` : null;
 
     const club = await this.clubModel.create({
       name: dto.name,
@@ -165,11 +165,11 @@ export class ClubsService {
     }
 
     if (profileImage) {
-      club.imageUrl = `/uploads/clubs/${profileImage.filename}`;
+      club.imageUrl = `/api/uploads/clubs/${profileImage.filename}`;
     }
 
     if (coverImage) {
-      club.coverImageUrl = `/uploads/clubs/${coverImage.filename}`;
+      club.coverImageUrl = `/api/uploads/clubs/${coverImage.filename}`;
     }
 
     if (dto.name !== undefined) club.name = dto.name;

@@ -45,7 +45,7 @@ async function bootstrap() {
   // ✅ servir les fichiers uploadés (logos, images, etc.)
   // -> un fichier ./uploads/logos/xxx.png sera dispo sur :
   //    http://IP:3000/api/uploads/logos/xxx.png (matches global prefix)
-  app.useStaticAssets(join(__dirname, '..', 'uploads'), {
+  app.useStaticAssets(join(process.cwd(), 'uploads'), {
     prefix: '/api/uploads',
   });
 

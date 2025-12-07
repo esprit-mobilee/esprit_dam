@@ -61,6 +61,6 @@ export class ChatController {
             throw new BadRequestException('No file uploaded');
         }
         // Return path that matches static file serving at /api/uploads
-        return { url: `/uploads/chat/${file.filename}` };
+        return { url: `/api/uploads/chat/${file.filename}` };
     }
 }
