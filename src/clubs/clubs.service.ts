@@ -78,13 +78,39 @@ export class ClubsService {
   // --------------------------------------------------------
   // FIND ALL CLUBS
   // --------------------------------------------------------
-  async findAll(): Promise<Club[]> {
-    return this.clubModel
+  // --------------------------------------------------------
+  // FIND ALL CLUBS
+  // --------------------------------------------------------
+  async findAll(userId?: string): Promise<any[]> {
+    const clubs = await this.clubModel
       .find()
       .populate('president', 'identifiant firstName lastName email role')
       .populate('members', 'identifiant firstName lastName email')
       .populate('account', 'identifiant name email role')
+      .lean()
       .exec();
+
+    if (!userId) return clubs;
+
+    // Get pending requests for this user
+    const pendingRequests = await this.joinRequestModel.find({
+      userId: new Types.ObjectId(userId),
+      status: JoinRequestStatus.PENDING
+    }).select('clubId').exec();
+
+    const pendingClubIds = new Set(pendingRequests.map(r => String(r.clubId)));
+
+    return clubs.map((club) => {
+      const isMember = club.members.some((m: any) => String(m._id || m) === userId);
+      const isPresident = club.president && String((club.president as any)._id || club.president) === userId;
+
+      let status = 'NOT_MEMBER';
+      if (isPresident) status = 'PRESIDENT';
+      else if (isMember) status = 'MEMBER';
+      else if (pendingClubIds.has(String(club._id))) status = 'PENDING';
+
+      return { ...club, membershipStatus: status };
+    });
   }
 
   // --------------------------------------------------------
@@ -388,97 +414,97 @@ export class ClubsService {
     };
   }
   // --------------------------------------------------------
-// APPROVE JOIN REQUEST
-// --------------------------------------------------------
-async approveJoinRequest(requestId: string) {
-  const request = await this.joinRequestModel.findById(requestId);
-  if (!request) throw new NotFoundException('Demande introuvable');
+  // APPROVE JOIN REQUEST
+  // --------------------------------------------------------
+  async approveJoinRequest(requestId: string) {
+    const request = await this.joinRequestModel.findById(requestId);
+    if (!request) throw new NotFoundException('Demande introuvable');
 
-  if (request.status !== 'PENDING') {
-    throw new BadRequestException('Cette demande a déjà été traitée');
-  }
+    if (request.status !== 'PENDING') {
+      throw new BadRequestException('Cette demande a déjà été traitée');
+    }
 
-  const club = await this.clubModel.findById(request.clubId);
-  const user = await this.userModel.findById(request.userId);
+    const club = await this.clubModel.findById(request.clubId);
+    const user = await this.userModel.findById(request.userId);
 
-  if (!club || !user) {
-    throw new NotFoundException('Club ou utilisateur introuvable');
-  }
+    if (!club || !user) {
+      throw new NotFoundException('Club ou utilisateur introuvable');
+    }
 
-  // Add user to club
-  club.members.push(user._id as Types.ObjectId);
-  user.clubs.push(club._id as Types.ObjectId);
+    // Add user to club
+    club.members.push(user._id as Types.ObjectId);
+    user.clubs.push(club._id as Types.ObjectId);
 
-  await club.save();
-  await user.save();
+    await club.save();
+    await user.save();
 
-  // Update request status
-  request.status = JoinRequestStatus.APPROVED;
-  await request.save();
+    // Update request status
+    request.status = JoinRequestStatus.APPROVED;
+    await request.save();
 
-  // Notify the user (in-app)
-  await this.notificationsService.create(
-    String(user._id),
-    NotificationType.JOIN_REQUEST,
-    String(club._id),
-    `Votre demande pour rejoindre ${club.name} a été acceptée`,
-  );
-
-  // ✅ SEND EMAIL
-  try {
-    await this.emailService.sendClubAcceptanceEmail(
-      user.email || '', // ← FIX: Utilise '' si undefined
-      `${user.firstName || ''} ${user.lastName || ''}`, // ← FIX
-      club.name || '' // ← FIX
-    );
-  } catch (error) {
-    console.error('Erreur lors de l\'envoi de l\'email d\'acceptation:', error);
-  }
-
-  return { message: 'Demande acceptée avec succès' };
-}
-
-// --------------------------------------------------------
-// REJECT JOIN REQUEST
-// --------------------------------------------------------
-async rejectJoinRequest(requestId: string) {
-  const request = await this.joinRequestModel.findById(requestId);
-  if (!request) throw new NotFoundException('Demande introuvable');
-
-  if (request.status !== 'PENDING') {
-    throw new BadRequestException('Cette demande a déjà été traitée');
-  }
-
-  const club = await this.clubModel.findById(request.clubId);
-  const user = await this.userModel.findById(request.userId);
-
-  // Update request status
-  request.status = JoinRequestStatus.REJECTED;
-  await request.save();
-
-  // Notify the user (in-app)
-  if (club && user) {
+    // Notify the user (in-app)
     await this.notificationsService.create(
       String(user._id),
       NotificationType.JOIN_REQUEST,
       String(club._id),
-      `Votre demande pour rejoindre ${club.name} a été refusée`,
+      `Votre demande pour rejoindre ${club.name} a été acceptée`,
     );
 
     // ✅ SEND EMAIL
     try {
-      await this.emailService.sendClubRejectionEmail(
+      await this.emailService.sendClubAcceptanceEmail(
         user.email || '', // ← FIX: Utilise '' si undefined
         `${user.firstName || ''} ${user.lastName || ''}`, // ← FIX
         club.name || '' // ← FIX
       );
     } catch (error) {
-      console.error('Erreur lors de l\'envoi de l\'email de refus:', error);
+      console.error('Erreur lors de l\'envoi de l\'email d\'acceptation:', error);
     }
+
+    return { message: 'Demande acceptée avec succès' };
   }
 
-  return { message: 'Demande refusée' };
-}
+  // --------------------------------------------------------
+  // REJECT JOIN REQUEST
+  // --------------------------------------------------------
+  async rejectJoinRequest(requestId: string) {
+    const request = await this.joinRequestModel.findById(requestId);
+    if (!request) throw new NotFoundException('Demande introuvable');
+
+    if (request.status !== 'PENDING') {
+      throw new BadRequestException('Cette demande a déjà été traitée');
+    }
+
+    const club = await this.clubModel.findById(request.clubId);
+    const user = await this.userModel.findById(request.userId);
+
+    // Update request status
+    request.status = JoinRequestStatus.REJECTED;
+    await request.save();
+
+    // Notify the user (in-app)
+    if (club && user) {
+      await this.notificationsService.create(
+        String(user._id),
+        NotificationType.JOIN_REQUEST,
+        String(club._id),
+        `Votre demande pour rejoindre ${club.name} a été refusée`,
+      );
+
+      // ✅ SEND EMAIL
+      try {
+        await this.emailService.sendClubRejectionEmail(
+          user.email || '', // ← FIX: Utilise '' si undefined
+          `${user.firstName || ''} ${user.lastName || ''}`, // ← FIX
+          club.name || '' // ← FIX
+        );
+      } catch (error) {
+        console.error('Erreur lors de l\'envoi de l\'email de refus:', error);
+      }
+    }
+
+    return { message: 'Demande refusée' };
+  }
   // --------------------------------------------------------
   // STATS (ADMIN)
   // --------------------------------------------------------

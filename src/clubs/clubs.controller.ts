@@ -96,8 +96,8 @@ export class ClubsController {
   // PUBLIC → Get all clubs
   // --------------------------------------------------------------------
   @Get()
-  findAll() {
-    return this.clubsService.findAll();
+  findAll(@Req() req: any) {
+    return this.clubsService.findAll(req.user?.userId);
   }
 
   // --------------------------------------------------------------------

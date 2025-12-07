@@ -56,6 +56,17 @@ export class PostsController {
     );
   }
 
+  // PUBLIC: Student feed endpoint (alias for getAllPosts)
+  @Get('feed')
+  async getFeed(@Req() req: any) {
+    const { search, page, limit } = req.query;
+    return this.postsService.getAllPosts({
+      search,
+      page: page ? parseInt(page) : undefined,
+      limit: limit ? parseInt(limit) : undefined,
+    });
+  }
+
   // PUBLIC: get all posts (Global Feed)
   @Get()
   async getAllPosts(@Req() req: any) {

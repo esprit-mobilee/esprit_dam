@@ -130,4 +130,13 @@ export class UtilisateursService {
 
     return { message: 'Mot de passe modifie avec succes' };
   }
+
+  // UPDATE ONLINE STATUS (Called by ChatGateway)
+  async updateStatus(userId: string, isOnline: boolean) {
+    const updateData: any = { isOnline };
+    if (!isOnline) {
+      updateData.lastSeen = new Date(); // Set last seen when going offline
+    }
+    return this.utilisateurModel.findByIdAndUpdate(userId, updateData, { new: true }).exec();
+  }
 }

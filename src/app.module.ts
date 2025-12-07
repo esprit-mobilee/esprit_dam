@@ -17,6 +17,7 @@ import { PostsModule } from './posts/posts.module';
 // Middleware
 import { LoggerMiddleware } from './common/middlewear/logger.middleware';
 import { NotificationsModule } from './notifications/notifications.module';
+import { ChatModule } from './chat/chat.module';
 
 @Module({
   imports: [
@@ -40,7 +41,8 @@ import { NotificationsModule } from './notifications/notifications.module';
     InternshipOfferModule,
     ApplicationModule,
     PostsModule,
-    NotificationsModule,     // ⭐ ADDED
+    NotificationsModule,
+    ChatModule,
   ],
   controllers: [AppController],
   providers: [AppService],
