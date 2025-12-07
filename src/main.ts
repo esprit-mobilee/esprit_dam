@@ -44,9 +44,9 @@ async function bootstrap() {
 
   // ✅ servir les fichiers uploadés (logos, images, etc.)
   // -> un fichier ./uploads/logos/xxx.png sera dispo sur :
-  //    http://IP:3000/uploads/logos/xxx.png
+  //    http://IP:3000/api/uploads/logos/xxx.png (matches global prefix)
   app.useStaticAssets(join(__dirname, '..', 'uploads'), {
-    prefix: '/uploads',
+    prefix: '/api/uploads',
   });
 
   // ✅ Validation DTO
@@ -83,9 +83,7 @@ async function bootstrap() {
   // ---------- SERVIR LES FICHIERS UPLOADÉS ----------
   // contient : /uploads/logos, /uploads/cv, /uploads/events …
   // accessible depuis mobile : http://IP:3000/uploads/xxx
-  app.useStaticAssets(join(__dirname, '..', 'uploads'), {
-    prefix: '/uploads/', // important : le slash final
-  });
+
 
   // ---------- SWAGGER ----------
   // ✅ Swagger
@@ -125,7 +123,7 @@ async function bootstrap() {
   console.log(`🌐 Local   : http://localhost:${port}/api`);
   console.log(`📱 Mobile  : http://${localIp}:${port}/api`);
   console.log(`📚 Swagger : http://${localIp}:${port}/api-docs`);
-  console.log(`📁 Uploads accessibles sur : http://${localIp}:${port}/uploads/...`);
+  console.log(`📁 Uploads accessibles sur : http://${localIp}:${port}/api/uploads/...`);
 }
 
 bootstrap();

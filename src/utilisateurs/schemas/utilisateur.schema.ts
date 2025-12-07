@@ -52,9 +52,15 @@ export class Utilisateur extends Document {
   // Club lie au compte (pour les comptes club)
   @Prop({ type: Types.ObjectId, ref: 'Club', default: null })
   club?: Types.ObjectId | null;
+
+  @Prop({ default: false })
+  isOnline: boolean;
+
+  @Prop({ default: Date.now })
+  lastSeen: Date;
 }
 
 export type UtilisateurDocument = Utilisateur & Document;
 export const UtilisateurSchema = SchemaFactory.createForClass(Utilisateur);
 
-UtilisateurSchema.index({ email: 1 }, { unique: true, sparse: true });
+
