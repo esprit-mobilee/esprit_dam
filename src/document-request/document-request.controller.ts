@@ -7,7 +7,13 @@ import {
   Delete,
   UseGuards,
   Request,
+  Patch,
+  UseInterceptors,
+  UploadedFile,
+  Query,
 } from '@nestjs/common';
+import { FileInterceptor } from '@nestjs/platform-express';
+import { multerOptions } from 'src/common/multer.config';
 import {
   ApiTags,
   ApiOperation,
@@ -17,6 +23,7 @@ import {
 } from '@nestjs/swagger';
 import { DocumentRequestService } from './document-request.service';
 import { CreateDocumentRequestDto } from './dto/create-document-request.dto';
+import { UpdateStatusDto } from './dto/update-status.dto';
 import { AuthenticationGuard } from 'src/auth/guards/authentication.guard';
 import { RolesGuard } from 'src/auth/guards/roles.guard';
 import { Roles } from 'src/auth/decorators/roles.decorator';
@@ -28,13 +35,13 @@ import { Role } from 'src/auth/enums/role.enum';
 //
 @UseGuards(AuthenticationGuard, RolesGuard)
 export class DocumentRequestController {
-  constructor(private readonly documentRequestService: DocumentRequestService) {}
+  constructor(private readonly documentRequestService: DocumentRequestService) { }
 
   /**
    * 📋 Récupérer les champs de formulaire selon le type de document
    */
   @Get('form-fields/:type')
- @Roles(Role.User, Role.Admin)
+  @Roles(Role.User, Role.Admin)
   @ApiOperation({ summary: 'Récupérer les champs de formulaire selon le type de document' })
   @ApiParam({ name: 'type', enum: ['attestation', 'relevé', 'convention'], description: 'Type de document' })
   @ApiResponse({ status: 200, description: 'Champs de formulaire pour le type spécifié' })
@@ -47,12 +54,12 @@ export class DocumentRequestController {
    */
   @Post()
   @Roles(Role.User, Role.Admin)
-  @ApiOperation({ 
-    summary: 'Créer une demande de document et récupérer l\'URL du fichier existant selon type et année' 
+  @ApiOperation({
+    summary: 'Créer une demande de document et récupérer l\'URL du fichier existant selon type et année'
   })
-  @ApiResponse({ 
-    status: 201, 
-    description: 'Demande créée avec succès. Retourne la demande et l\'URL du fichier (null si non trouvé)' 
+  @ApiResponse({
+    status: 201,
+    description: 'Demande créée avec succès. Retourne la demande et l\'URL du fichier (null si non trouvé)'
   })
   @ApiResponse({ status: 401, description: 'Non authentifié' })
   create(@Request() req: any, @Body() createDto: CreateDocumentRequestDto) {
@@ -62,12 +69,39 @@ export class DocumentRequestController {
   /**
    * 📋 Récupérer toutes les demandes de l'utilisateur
    */
+  /**
+   * 📋 Récupérer toutes les demandes (Admin: toutes, User: les siennes)
+   */
   @Get()
   @Roles(Role.User, Role.Admin)
-  @ApiOperation({ summary: 'Récupérer toutes mes demandes de documents' })
+  @ApiOperation({ summary: 'Récupérer toutes les demandes (Admin: toutes, User: les siennes)' })
   @ApiResponse({ status: 200, description: 'Liste des demandes' })
-  findAll(@Request() req: any) {
-    return this.documentRequestService.findAll(req.user.userId);
+  findAll(@Request() req: any, @Query('status') status?: string) {
+    const isAdmin = req.user.role === Role.Admin;
+    return this.documentRequestService.findAll(req.user.userId, isAdmin, status);
+  }
+
+  /**
+   * 👮‍♂️ Changer le statut d'une demande (Admin)
+   */
+  @Patch(':id/status')
+  @Roles(Role.Admin)
+  @ApiOperation({ summary: 'Changer le statut d\'une demande (Admin uniquement)' })
+  @ApiResponse({ status: 200, description: 'Statut mis à jour' })
+  updateStatus(@Param('id') id: string, @Body() updateStatusDto: UpdateStatusDto) {
+    return this.documentRequestService.updateStatus(id, updateStatusDto.status, updateStatusDto.rejectionReason);
+  }
+
+  /**
+   * 📤 Uploader le document final (Admin)
+   */
+  @Post(':id/file')
+  @Roles(Role.Admin)
+  @UseInterceptors(FileInterceptor('file', multerOptions('documents')))
+  @ApiOperation({ summary: 'Uploader le document final et approuver la demande (Admin uniquement)' })
+  @ApiResponse({ status: 201, description: 'Fichier uploadé et demande approuvée' })
+  uploadAdminFile(@Param('id') id: string, @UploadedFile() file: Express.Multer.File) {
+    return this.documentRequestService.uploadAdminFile(id, file);
   }
 
   /**
@@ -80,7 +114,8 @@ export class DocumentRequestController {
   @ApiResponse({ status: 200, description: 'Détails de la demande' })
   @ApiResponse({ status: 404, description: 'Demande introuvable' })
   findOne(@Request() req: any, @Param('id') id: string) {
-    return this.documentRequestService.findOne(id, req.user.userId);
+    const isAdmin = req.user.role === Role.Admin;
+    return this.documentRequestService.findOne(id, req.user.userId, isAdmin);
   }
 
   /**
@@ -104,7 +139,8 @@ export class DocumentRequestController {
   @ApiResponse({ status: 200, description: 'Informations du fichier avec URL' })
   @ApiResponse({ status: 404, description: 'Fichier introuvable' })
   getFileUrlById(@Request() req: any, @Param('fileId') fileId: string) {
-    return this.documentRequestService.getFileUrlById(fileId, req.user.userId);
+    const isAdmin = req.user.role === Role.Admin;
+    return this.documentRequestService.getFileUrlById(fileId, req.user.userId, isAdmin);
   }
 
   /**
@@ -117,7 +153,8 @@ export class DocumentRequestController {
   @ApiResponse({ status: 200, description: 'Informations du fichier avec URL' })
   @ApiResponse({ status: 404, description: 'Fichier introuvable' })
   getFileUrlByRequestId(@Request() req: any, @Param('requestId') requestId: string) {
-    return this.documentRequestService.getFileUrlByRequestId(requestId, req.user.userId);
+    const isAdmin = req.user.role === Role.Admin;
+    return this.documentRequestService.getFileUrlByRequestId(requestId, req.user.userId, isAdmin);
   }
 
   /**
@@ -140,6 +177,7 @@ export class DocumentRequestController {
   @ApiParam({ name: 'id', description: 'ID de la demande' })
   @ApiResponse({ status: 200, description: 'Demande supprimée' })
   remove(@Request() req: any, @Param('id') id: string) {
-    return this.documentRequestService.remove(id, req.user.userId);
+    const isAdmin = req.user.role === Role.Admin;
+    return this.documentRequestService.remove(id, req.user.userId, isAdmin);
   }
 }

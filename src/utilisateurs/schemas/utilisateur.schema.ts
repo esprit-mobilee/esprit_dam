@@ -33,6 +33,10 @@ export class Utilisateur extends Document {
   @Prop({ required: true })
   password: string;
 
+  // Ajouter ce champ unique dans le schéma User
+@Prop({ type: Boolean, default: false })
+inscriptionPaid: boolean;
+
   // on inclut ton nouveau rôle "parent"
   @Prop({ enum: Role, default: Role.User })
   role: Role;
