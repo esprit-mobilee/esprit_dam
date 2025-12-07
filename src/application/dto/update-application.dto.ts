@@ -1,3 +1,4 @@
+// src/application/dto/update-application.dto.ts
 import { PartialType } from '@nestjs/mapped-types';
 import { CreateApplicationDto } from './create-application.dto';
 import { ApiPropertyOptional } from '@nestjs/swagger';
@@ -9,7 +10,10 @@ export class UpdateApplicationDto extends PartialType(CreateApplicationDto) {
   @IsNumber()
   aiScore?: number;
 
-  @ApiPropertyOptional({ example: 'accepted', enum: ['pending', 'accepted', 'rejected'] })
+  @ApiPropertyOptional({
+    example: 'accepted',
+    enum: ['pending', 'accepted', 'rejected'],
+  })
   @IsOptional()
   @IsIn(['pending', 'accepted', 'rejected'])
   status?: string;
@@ -18,4 +22,16 @@ export class UpdateApplicationDto extends PartialType(CreateApplicationDto) {
   @IsOptional()
   @IsString()
   coverLetter?: string;
+
+  @ApiPropertyOptional({
+    description: 'Interview information from Google Calendar',
+  })
+  @IsOptional()
+  interview?: {
+    scheduledAt?: Date;
+    googleEventId?: string;
+    meetingLink?: string;
+    notes?: string;
+    status?: 'scheduled' | 'completed' | 'cancelled';
+  };
 }

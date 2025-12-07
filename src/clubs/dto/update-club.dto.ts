@@ -1,18 +1,35 @@
-// src/clubs/dto/update-club.dto.ts
-import { PartialType, ApiPropertyOptional } from '@nestjs/swagger';
-import { CreateClubDto } from './create-club.dto';
-import { IsOptional, IsString, IsArray } from 'class-validator';
+import { ApiPropertyOptional } from '@nestjs/swagger';
+import { IsOptional, IsString } from 'class-validator';
 
-export class UpdateClubDto extends PartialType(CreateClubDto) {
+export class UpdateClubDto {
+  @ApiPropertyOptional({ example: 'Club Robotique' })
+  @IsOptional()
+  @IsString()
+  name?: string;
+
   @ApiPropertyOptional({
-    description: 'Nouveau président (Mongo _id ou identifiant)',
+    example: 'Club des passionnes de robotique et dIA.',
+    required: false,
+  })
+  @IsOptional()
+  @IsString()
+  description?: string;
+
+  @ApiPropertyOptional({
+    example: 'PR001',
+    description: 'ID MongoDB du president OU identifiant (ex: PR001)',
+    required: false,
   })
   @IsOptional()
   @IsString()
   president?: string;
 
-  @ApiPropertyOptional({ type: [String] })
+  @ApiPropertyOptional({
+    example: 'robotique, innovation',
+    description: 'Mots-cles separes par des virgules',
+    required: false,
+  })
   @IsOptional()
-  @IsArray()
-  tags?: string[];
+  @IsString()
+  tags?: string;
 }

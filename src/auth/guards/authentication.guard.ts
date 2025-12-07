@@ -16,27 +16,34 @@ export class AuthenticationGuard implements CanActivate {
     const token = this.extractTokenFromHeader(request);
 
     if (!token) {
-      throw new UnauthorizedException('Token JWT manquant');
+      throw new UnauthorizedException('Token JWT manquant. Veuillez fournir un token dans l\'en-tête Authorization: Bearer <token>');
     }
 
     try {
-      // ✅ Vérifie avec le JwtService global
       const payload = await this.jwtService.verifyAsync(token);
 
-      // ✅ Injecte les infos dans la requête
       request['user'] = {
         userId: payload.userId,
+        identifiant: payload.identifiant,
         role: payload.role,
+        presidentOf: payload.presidentOf ?? null,
+        club: payload.club ?? null,
+        classGroup: payload.classGroup ?? null,
       };
     } catch (error) {
-      throw new UnauthorizedException('Token invalide ou expiré');
+      throw new UnauthorizedException('Token invalide ou expire');
     }
 
     return true;
   }
 
   private extractTokenFromHeader(request: Request): string | undefined {
-    const [type, token] = request.headers.authorization?.split(' ') ?? [];
+    const authHeader = request.headers.authorization;
+    if (!authHeader) {
+      return undefined;
+    }
+    
+    const [type, token] = authHeader.split(' ');
     return type === 'Bearer' ? token : undefined;
   }
 }

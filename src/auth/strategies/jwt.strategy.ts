@@ -8,6 +8,11 @@ import { Utilisateur, UtilisateurDocument } from 'src/utilisateurs/schemas/utili
 
 type JwtPayload = {
   userId: string;
+  identifiant?: string;
+  role: string;
+  classGroup?: string | null;
+  presidentOf?: string | null;
+  club?: string | null;
   iat?: number;
   exp?: number;
 };
@@ -28,13 +33,17 @@ export class JwtStrategy extends PassportStrategy(Strategy) {
   async validate(payload: JwtPayload) {
     const user = await this.utilisateurModel.findById(payload.userId).lean();
     if (!user) throw new UnauthorizedException('Utilisateur inexistant');
-    // Ce qui sera injecté en request.user
+
     return {
       _id: user._id,
-      email: user.email,
-      role: user.role, // ⚠️ Assure-toi que role est bien défini dans le schéma utilisateur
-      firstName: user.firstName,
-      lastName: user.lastName,
+      userId: user._id,
+      identifiant: user.identifiant,
+      name: user.name,
+      email: user.email ?? null,
+      role: user.role,
+      classGroup: user.classGroup ?? null,
+      presidentOf: user.presidentOf ?? null,
+      club: user.club ?? null,
     };
   }
 }

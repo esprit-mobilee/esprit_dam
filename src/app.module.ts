@@ -4,37 +4,45 @@ import { ConfigModule } from '@nestjs/config';
 import { AppController } from './app.controller';
 import { AppService } from './app.service';
 
-// 🧩 Feature Modules
+// Feature modules
 import { UtilisateursModule } from './utilisateurs/utilisateurs.module';
 import { AuthModule } from './auth/auth.module';
 import { ClubsModule } from './clubs/clubs.module';
+import { DocumentRequestModule } from './document-request/document-request.module';
+import { EventsModule } from './events/events.module';
 import { InternshipOfferModule } from './internship-offer/internship-offer.module';
 import { ApplicationModule } from './application/application.module';
-import { EventsModule } from './events/events.module';
+import { PostsModule } from './posts/posts.module';
 
-// 🛠️ Middleware
+// Middleware
 import { LoggerMiddleware } from './common/middlewear/logger.middleware';
+import { NotificationsModule } from './notifications/notifications.module';
+import { ChatModule } from './chat/chat.module';
 
 @Module({
   imports: [
-    // 🌍 Load environment variables globally
+    // Env variables
     ConfigModule.forRoot({
       isGlobal: true,
       envFilePath: '.env',
     }),
 
-    // 💾 MongoDB connection (with safe fallback)
+    // MongoDB connection
     MongooseModule.forRoot(
       process.env.MONGO_URI ?? 'mongodb://localhost:27017/dam',
     ),
 
-    // 📦 Application feature modules
+    // Feature modules
     UtilisateursModule,
     AuthModule,
     ClubsModule,
+    DocumentRequestModule,
     EventsModule,
     InternshipOfferModule,
     ApplicationModule,
+    PostsModule,
+    NotificationsModule,
+    ChatModule,
   ],
   controllers: [AppController],
   providers: [AppService],

@@ -14,4 +14,4 @@ import { RolesGuard } from '../auth/guards/roles.guard';
   controllers: [InternshipOfferController],
   providers: [InternshipOfferService, RolesGuard],
 })
-export class InternshipOfferModule {}
+export class InternshipOfferModule { }
