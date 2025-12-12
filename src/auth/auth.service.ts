@@ -16,6 +16,8 @@ import {
 } from 'src/utilisateurs/schemas/utilisateur.schema';
 import { RefreshToken } from './schemas/refresh-token.schema';
 import { Role } from './enums/role.enum';
+import { PasswordReset, PasswordResetDocument } from './schemas/password-reset.schema';
+import { EmailService } from 'src/email/email.service';
 
 @Injectable()
 export class AuthService {
@@ -26,8 +28,12 @@ export class AuthService {
     @InjectModel(RefreshToken.name)
     private readonly refreshTokenModel: Model<RefreshToken>,
 
+    @InjectModel(PasswordReset.name)
+    private readonly passwordResetModel: Model<PasswordResetDocument>,
+
     private readonly jwtService: JwtService,
-  ) {}
+    private readonly emailService: EmailService,
+  ) { }
 
   // -------------------------------------------------------
   // SIGNUP
@@ -221,5 +227,68 @@ export class AuthService {
     await utilisateur.save();
 
     return { message: 'Mot de passe modifi\u00e9 avec succ\u00e8s' };
+  }
+  // -------------------------------------------------------
+  // FORGOT PASSWORD
+  // -------------------------------------------------------
+  async forgotPassword(email: string) {
+    const user = await this.utilisateurModel.findOne({ email });
+    if (!user) {
+      throw new BadRequestException('Aucun utilisateur trouvé avec cet email');
+    }
+
+    // Generate 6 digit code
+    const code = Math.floor(100000 + Math.random() * 900000).toString();
+    const expiresAt = new Date();
+    expiresAt.setMinutes(expiresAt.getMinutes() + 15); // 15 mins expiry
+
+    // Save code
+    await this.passwordResetModel.updateOne(
+      { email },
+      { code, expiresAt },
+      { upsert: true }
+    );
+
+    // Send email
+    await this.emailService.sendPasswordResetEmail(email, code, user.firstName || user.name);
+
+    return { message: 'Code de vérification envoyé avec succès' };
+  }
+
+  async verifyResetCode(email: string, code: string) {
+    const record = await this.passwordResetModel.findOne({ email, code });
+
+    if (!record) {
+      throw new BadRequestException('Code invalide');
+    }
+
+    if (new Date() > record.expiresAt) {
+      throw new BadRequestException('Code expiré');
+    }
+
+    return { message: 'Code valide' };
+  }
+
+  async resetPassword(email: string, code: string, newPass: string) {
+    // Verify code again
+    await this.verifyResetCode(email, code);
+
+    const user = await this.utilisateurModel.findOne({ email });
+    if (!user) {
+      throw new BadRequestException('Utilisateur introuvable');
+    }
+
+    // Update password
+    // Update password safely (avoid validating entire document)
+    const hashedPassword = await bcrypt.hash(newPass, 10);
+    await this.utilisateurModel.updateOne(
+      { _id: user._id },
+      { $set: { password: hashedPassword } }
+    );
+
+    // Delete used code
+    await this.passwordResetModel.deleteOne({ email });
+
+    return { message: 'Mot de passe réinitialisé avec succès' };
   }
 }

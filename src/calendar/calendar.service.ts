@@ -1,6 +1,7 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { EmailService } from '../email/email.service';
+import * as ics from 'ics';
 
 @Injectable()
 export class CalendarService {
@@ -12,6 +13,117 @@ export class CalendarService {
   ) {
     this.logger.log('CalendarService initialized in MOCK mode (OAuth not configured)');
   }
+
+  /**
+   * Generate .ics file for an event
+   */
+  async generateEventICS(eventDetails: {
+    title: string;
+    description: string;
+    startDate: Date;
+    endDate: Date;
+    location?: string;
+    organizerName?: string;
+    organizerEmail?: string;
+  }): Promise<string> {
+    try {
+      const start = this.dateToArray(eventDetails.startDate);
+      const end = this.dateToArray(eventDetails.endDate);
+
+      const event: ics.EventAttributes = {
+        start,
+        end,
+        title: eventDetails.title,
+        description: eventDetails.description,
+        location: eventDetails.location || '',
+        status: 'CONFIRMED',
+        busyStatus: 'BUSY',
+        organizer: eventDetails.organizerEmail ? {
+          name: eventDetails.organizerName || 'ESPRIT Club',
+          email: eventDetails.organizerEmail,
+        } : undefined,
+        alarms: [
+          {
+            action: 'display',
+            description: 'Reminder',
+            trigger: { hours: 24, minutes: 0, before: true },
+          },
+          {
+            action: 'display',
+            description: 'Reminder',
+            trigger: { hours: 0, minutes: 30, before: true },
+          },
+        ],
+      };
+
+      const { error, value } = ics.createEvent(event);
+
+      if (error) {
+        this.logger.error('Error generating .ics file', error);
+        throw new Error(`Failed to generate .ics file: ${error.message}`);
+      }
+
+      if (!value) {
+        throw new Error('Failed to generate .ics file: No content generated');
+      }
+
+      this.logger.log(`✅ Generated .ics file for event: ${eventDetails.title}`);
+      return value;
+    } catch (error) {
+      this.logger.error('Error in generateEventICS', error);
+      throw error;
+    }
+  }
+
+  /**
+   * Send event invitation email with .ics attachment
+   */
+  async sendEventInvitation(
+    recipientEmail: string,
+    recipientName: string,
+    eventDetails: {
+      title: string;
+      description: string;
+      startDate: Date;
+      endDate: Date;
+      location?: string;
+      organizerName?: string;
+      organizerEmail?: string;
+    }
+  ): Promise<void> {
+    try {
+      // Generate .ics file
+      const icsContent = await this.generateEventICS(eventDetails);
+
+      // Send email with .ics attachment
+      await this.emailService.sendEventInvitationEmail(
+        recipientEmail,
+        recipientName,
+        eventDetails,
+        icsContent
+      );
+
+      this.logger.log(`📧 Event invitation sent to ${recipientEmail}`);
+    } catch (error) {
+      this.logger.error(`Failed to send event invitation to ${recipientEmail}`, error);
+      throw error;
+    }
+  }
+
+  /**
+   * Convert Date to ICS date array format [year, month, day, hour, minute]
+   */
+  private dateToArray(date: Date): [number, number, number, number, number] {
+    return [
+      date.getFullYear(),
+      date.getMonth() + 1, // ICS months are 1-indexed
+      date.getDate(),
+      date.getHours(),
+      date.getMinutes(),
+    ];
+  }
+
+  // ========== EXISTING INTERVIEW METHODS ==========
 
   /**
    * Schedule an interview event (MOCK MODE)
@@ -27,7 +139,7 @@ export class CalendarService {
     try {
       // Générer un faux eventId unique
       const eventId = `mock_event_${Date.now()}_${Math.random().toString(36).substring(2, 11)}`;
-      
+
       // Générer un faux lien Google Meet
       const meetingLink = `https://meet.google.com/mock-${Math.random().toString(36).substring(2, 11)}`;
 
@@ -119,7 +231,7 @@ export class CalendarService {
   async getInterviewDetails(eventId: string): Promise<any> {
     try {
       this.logger.log(`📖 [MOCK] Fetching interview details: ${eventId}`);
-      
+
       return {
         id: eventId,
         summary: 'Mock Interview',

@@ -63,4 +63,8 @@ export class ChatController {
         // Return path that matches static file serving at /api/uploads
         return { url: `/api/uploads/chat/${file.filename}` };
     }
+    @Post('translate')
+    async translateMessage(@Body() body: { messageId: string; targetLang: string }) {
+        return this.chatService.translateMessage(body.messageId, body.targetLang);
+    }
 }

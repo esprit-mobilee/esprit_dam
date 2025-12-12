@@ -18,7 +18,7 @@ import { AuthenticationGuard } from './guards/authentication.guard';
 @ApiTags('Authentification')
 @Controller('auth')
 export class AuthController {
-  constructor(private readonly authService: AuthService) {}
+  constructor(private readonly authService: AuthService) { }
 
   // Signup (public)
   @Post('signup')
@@ -74,5 +74,34 @@ export class AuthController {
   @ApiOperation({ summary: 'Recuperer le profil utilisateur connecte' })
   async me(@Req() req: any) {
     return this.authService.me(req.user.userId);
+  }
+
+  // -------------------------------------------------------
+  // FORGOT PASSWORD
+  // -------------------------------------------------------
+
+  @Post('forgot-password')
+  @ApiOperation({ summary: 'Demander un code de réinitialisation de mot de passe par email' })
+  @ApiBody({ schema: { example: { email: 'student@esprit.tn' } } })
+  async forgotPassword(@Body('email') email: string) {
+    return this.authService.forgotPassword(email);
+  }
+
+  @Post('verify-code')
+  @ApiOperation({ summary: 'Vérifier la validité du code reçu par email' })
+  @ApiBody({ schema: { example: { email: 'student@esprit.tn', code: '123456' } } })
+  async verifyCode(@Body('email') email: string, @Body('code') code: string) {
+    return this.authService.verifyResetCode(email, code);
+  }
+
+  @Post('reset-password')
+  @ApiOperation({ summary: 'Réinitialiser le mot de passe avec le code (Update Password)' })
+  @ApiBody({ schema: { example: { email: 'student@esprit.tn', code: '123456', newPassword: 'NewPass123' } } })
+  async resetPassword(
+    @Body('email') email: string,
+    @Body('code') code: string,
+    @Body('newPassword') newPass: string
+  ) {
+    return this.authService.resetPassword(email, code, newPass);
   }
 }

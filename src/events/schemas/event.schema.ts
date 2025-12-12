@@ -44,6 +44,9 @@ export class Event extends Document {
   @Prop({ default: true })
   registrationOpen: boolean;
 
+  @Prop({ type: [String], default: [] })
+  formQuestions: string[];
+
   @Prop({
     type: [
       {
@@ -52,6 +55,16 @@ export class Event extends Document {
         identifiant: { type: String },
         email: { type: String },
         message: { type: String },
+        answers: {
+          type: [
+            {
+              question: { type: String },
+              answer: { type: String },
+            },
+          ],
+          default: [],
+        },
+        status: { type: String, enum: ['pending', 'accepted', 'rejected'], default: 'pending' },
         createdAt: { type: Date, default: Date.now },
       },
     ],
@@ -63,6 +76,8 @@ export class Event extends Document {
     identifiant?: string;
     email?: string;
     message?: string;
+    answers?: { question: string; answer: string }[];
+    status: string;
     createdAt: Date;
   }[];
 }

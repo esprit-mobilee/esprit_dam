@@ -8,9 +8,11 @@ import { AuthService } from './auth.service';
 import { jwtConstants } from './constants';
 import { Utilisateur, UtilisateurSchema } from 'src/utilisateurs/schemas/utilisateur.schema';
 import { RefreshToken, RefreshTokenSchema } from './schemas/refresh-token.schema';
+import { PasswordReset, PasswordResetSchema } from './schemas/password-reset.schema';
 import { JwtStrategy } from './strategies/jwt.strategy';
 import { RolesGuard } from './guards/roles.guard';
 import { ClubsModule } from 'src/clubs/clubs.module';
+import { EmailModule } from 'src/email/email.module';
 
 @Module({
   imports: [
@@ -37,14 +39,16 @@ import { ClubsModule } from 'src/clubs/clubs.module';
     MongooseModule.forFeature([
       { name: Utilisateur.name, schema: UtilisateurSchema },
       { name: RefreshToken.name, schema: RefreshTokenSchema },
+      { name: PasswordReset.name, schema: PasswordResetSchema }, // Added PasswordReset schema
     ]),
     ClubsModule, // Importé pour que RolesGuard puisse utiliser ClubsService
+    EmailModule, // ✅ Import EmailModule 
 
-// ✅ ensures RolesGuard & Auth share ClubsService
+    // ✅ ensures RolesGuard & Auth share ClubsService
   ],
 
   controllers: [AuthController],
   providers: [AuthService, JwtStrategy, RolesGuard],
   exports: [AuthService, PassportModule, JwtModule, RolesGuard],
 })
-export class AuthModule {}
+export class AuthModule { }

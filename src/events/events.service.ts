@@ -8,12 +8,24 @@ import { JoinEventDto } from './dto/join-event.dto';
 import { NotificationsService } from 'src/notifications/notifications.service';
 import { NotificationType } from 'src/notifications/schemas/notification.schema';
 
+import { EmailService } from 'src/email/email.service';
+import { CalendarService } from 'src/calendar/calendar.service';
+
+import { Club, ClubDocument } from 'src/clubs/schemas/club.schema';
+import { Utilisateur, UtilisateurDocument } from 'src/utilisateurs/schemas/utilisateur.schema';
+
 @Injectable()
 export class EventsService {
   constructor(
     @InjectModel(Event.name)
     private readonly eventModel: Model<EventDocument>,
+    @InjectModel(Club.name)
+    private readonly clubModel: Model<ClubDocument>,
+    @InjectModel(Utilisateur.name)
+    private readonly userModel: Model<UtilisateurDocument>,
     private readonly notificationsService: NotificationsService,
+    private readonly emailService: EmailService,
+    private readonly calendarService: CalendarService,
   ) { }
 
   async create(
@@ -52,6 +64,23 @@ export class EventsService {
     // Parse tags from comma-separated string
     const tags = dto.tags ? dto.tags.split(',').map(tag => tag.trim()).filter(tag => tag.length > 0) : [];
 
+    // Parse formQuestions from JSON string if needed, or assume array. 
+    // Since this is likely multipart/form-data, it might come as a stringified JSON.
+    let formQuestions: string[] = [];
+    if (dto.formQuestions) {
+      if (typeof dto.formQuestions === 'string') {
+        try {
+          formQuestions = JSON.parse(dto.formQuestions);
+        } catch (e) {
+          // If not JSON, maybe comma separated? Or just single string?
+          // Let's assume frontend sends JSON string for array
+          formQuestions = [dto.formQuestions];
+        }
+      } else if (Array.isArray(dto.formQuestions)) {
+        formQuestions = dto.formQuestions;
+      }
+    }
+
     // Build location object if coordinates are provided
     let location: { address?: string; latitude?: number; longitude?: number } | undefined = undefined;
     if (dto.location || dto.latitude !== undefined || dto.longitude !== undefined) {
@@ -71,6 +100,7 @@ export class EventsService {
       organizerId: dto.organizerId,
       category: dto.category ?? '',
       tags,
+      formQuestions,
       imageUrl,
     });
 
@@ -275,6 +305,8 @@ export class EventsService {
       identifiant: dto.studentId ?? user?.identifiant ?? undefined,
       email: dto.email,
       message: dto.message,
+      answers: dto.answers ?? [],
+      status: 'pending',
       createdAt: new Date(),
     });
 
@@ -282,14 +314,112 @@ export class EventsService {
 
     // Create notification for event organizer (club)
     if (event.organizerId && userObjectId) {
-      await this.notificationsService.create(
-        String(event.organizerId),
-        NotificationType.EVENT_REGISTRATION,
-        String(userObjectId),
-        `${participantName} s'est inscrit à l'événement "${event.title}"`,
-      );
+      try {
+        // Resolve organizerId (identifiant) to a Club
+        // 1. Find the User who created the event
+        const organizerUser = await this.userModel.findOne({ identifiant: event.organizerId });
+
+        if (organizerUser) {
+          // 2. Find the Club associated with this user
+          // Either the user IS the club account, or the user is the President
+          const club = await this.clubModel.findOne({
+            $or: [
+              { account: organizerUser._id },
+              { president: organizerUser._id }
+            ]
+          });
+
+          if (club) {
+            await this.notificationsService.create(
+              String(club._id),
+              NotificationType.EVENT_REGISTRATION,
+              String(userObjectId),
+              `${participantName} s'est inscrit à l'événement "${event.title}"`,
+            );
+          } else {
+            console.warn(`Club not found for organizer ${event.organizerId}`);
+          }
+        } else {
+          console.warn(`Organizer user not found: ${event.organizerId}`);
+        }
+      } catch (e) {
+        console.error('Failed to send notification for event registration:', e);
+        // Do not fail the registration if notification fails
+      }
     }
 
     return { message: 'Inscription enregistrée', registrationCount: event.registrations.length };
+  }
+
+  async getRegistrations(eventId: string) {
+    const event = await this.eventModel.findById(eventId);
+    if (!event) throw new NotFoundException('Event not found');
+    return event.registrations;
+  }
+
+  async approveRegistration(eventId: string, userId: string) {
+    const event = await this.eventModel.findById(eventId);
+    if (!event) throw new NotFoundException('Event not found');
+
+    const registration = event.registrations.find(
+      (r) => r.userId && r.userId.toString() === userId
+    );
+
+    if (!registration) throw new NotFoundException('Registration not found');
+
+    registration.status = 'accepted';
+    // Mongoose subdocument array change detection sometimes needs this
+    event.markModified('registrations');
+    await event.save();
+
+    // Send calendar invitation email with .ics file after approval
+    if (registration.email) {
+      try {
+        await this.calendarService.sendEventInvitation(
+          registration.email,
+          registration.name,
+          {
+            title: event.title,
+            description: event.description || 'Événement ESPRIT',
+            startDate: new Date(event.startDate),
+            endDate: new Date(event.endDate),
+            location: event.location?.address,
+            organizerName: 'ESPRIT Club',
+            organizerEmail: 'messaoudmay6@gmail.com',
+          }
+        );
+        console.log(`📧 Calendar invitation sent to ${registration.email} after approval`);
+      } catch (emailError) {
+        console.error('Failed to send calendar invitation:', emailError);
+        // Don't fail approval if email fails
+      }
+    }
+
+    return { message: 'Registration accepted', status: 'accepted' };
+  }
+
+  async rejectRegistration(eventId: string, userId: string) {
+    const event = await this.eventModel.findById(eventId);
+    if (!event) throw new NotFoundException('Event not found');
+
+    const registration = event.registrations.find(
+      (r) => r.userId && r.userId.toString() === userId
+    );
+
+    if (!registration) throw new NotFoundException('Registration not found');
+
+    registration.status = 'rejected';
+    event.markModified('registrations');
+    await event.save();
+
+    if (registration.email) {
+      this.emailService.sendEventRejectionEmail(
+        registration.email,
+        registration.name,
+        event.title
+      );
+    }
+
+    return { message: 'Registration rejected', status: 'rejected' };
   }
 }

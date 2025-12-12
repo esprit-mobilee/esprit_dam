@@ -94,6 +94,14 @@ export class CreateEventDto {
   tags?: string;
 
   @ApiProperty({
+    type: 'string', // Actually array or json string, but swagger handles simple types better
+    required: false,
+    description: 'Custom questions (JSON string or array)',
+  })
+  @IsOptional()
+  formQuestions?: string | string[];
+
+  @ApiProperty({
     type: 'string',
     format: 'binary',
     required: false,

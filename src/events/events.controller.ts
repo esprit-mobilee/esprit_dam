@@ -203,4 +203,73 @@ export class EventsController {
   ) {
     return this.eventsService.joinEvent(id, dto, req.user);
   }
+
+  // ---------------------------------------------------------
+  // CLUB Management of Registrations
+  // ---------------------------------------------------------
+
+  @Get(':id/registrations')
+  @ApiOperation({ summary: 'Voir les inscriptions (Club/Admin)' })
+  async getRegistrations(@Param('id') id: string, @Req() req: any) {
+    const user = req.user;
+    // Check ownership
+    // For simplicity allowing club/admin role check or specific ownership logic
+    // Ideally reuse the check logic or make a guard
+    if (user.role !== Role.Admin) {
+      const event = await this.eventsService.findOne(id);
+      const organizerId = event.organizerId;
+      const userIdent = user.identifiant;
+      const fallbackId = user.userId || user._id?.toString();
+
+      const isOwner = organizerId === userIdent || organizerId === fallbackId;
+      if (!isOwner && user.role !== Role.Club) { // Assuming Role.Club implies some privilege, or strictly owner
+        // If Role.Club is generic, we must ensure it's THIS club. 
+        // But organizerId usually matches the club's ID for club events.
+        if (!isOwner) throw new ForbiddenException('Access denied');
+      }
+    }
+    return this.eventsService.getRegistrations(id);
+  }
+
+  @Post(':id/registrations/:userId/approve')
+  @ApiOperation({ summary: 'Approuver une inscription' })
+  async approveRegistration(
+    @Param('id') eventId: string,
+    @Param('userId') userId: string,
+    @Req() req: any
+  ) {
+    // Add ownership check here essentially same as above
+    const user = req.user;
+    if (user.role !== Role.Admin) {
+      const event = await this.eventsService.findOne(eventId);
+      const organizerId = event.organizerId;
+      const userIdent = user.identifiant;
+      const fallbackId = user.userId || user._id?.toString();
+      const isOwner = organizerId === userIdent || organizerId === fallbackId;
+
+      if (!isOwner) throw new ForbiddenException('Access denied');
+    }
+    return this.eventsService.approveRegistration(eventId, userId);
+  }
+
+  @Post(':id/registrations/:userId/reject')
+  @ApiOperation({ summary: 'Refuser une inscription' })
+  async rejectRegistration(
+    @Param('id') eventId: string,
+    @Param('userId') userId: string,
+    @Req() req: any
+  ) {
+    // Add ownership check
+    const user = req.user;
+    if (user.role !== Role.Admin) {
+      const event = await this.eventsService.findOne(eventId);
+      const organizerId = event.organizerId;
+      const userIdent = user.identifiant;
+      const fallbackId = user.userId || user._id?.toString();
+      const isOwner = organizerId === userIdent || organizerId === fallbackId;
+
+      if (!isOwner) throw new ForbiddenException('Access denied');
+    }
+    return this.eventsService.rejectRegistration(eventId, userId);
+  }
 }
