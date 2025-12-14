@@ -41,6 +41,13 @@ export class ConventionFormDto {
   @IsString()
   entreprise?: string;
 
+  @IsOptional()
+@IsString()
+documentReference?: string;
+@IsOptional()
+@IsString()
+verificationHash?: string;
+
   @ApiProperty({ example: '2024-06-01', description: 'Date de début du stage', required: false })
   @IsOptional()
   @IsString()
