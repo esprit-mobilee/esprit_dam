@@ -2,12 +2,20 @@ import { Injectable } from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
 import { Model, Types } from 'mongoose';
 import { Message, MessageDocument } from './schemas/message.schema';
+import { translate } from 'google-translate-api-x';
+import Filter = require('bad-words');
+import { tunisianBadWords } from './profanity/tunisian-bad-words';
 
 @Injectable()
 export class ChatService {
+    private filter: Filter;
+
     constructor(
         @InjectModel(Message.name) private messageModel: Model<MessageDocument>,
-    ) { }
+    ) {
+        this.filter = new Filter();
+        this.filter.addWords(...tunisianBadWords);
+    }
 
     async createMessage(data: {
         clubId?: string;
@@ -18,11 +26,13 @@ export class ChatService {
         replyTo?: string;
         recipientId?: string;
     }) {
+        const cleanContent = data.type === 'TEXT' ? this.filter.clean(data.content) : data.content;
+
         const message = new this.messageModel({
             clubId: data.clubId ? new Types.ObjectId(data.clubId) : null,
             senderId: new Types.ObjectId(data.senderId),
             recipientId: data.recipientId ? new Types.ObjectId(data.recipientId) : null,
-            content: data.content,
+            content: cleanContent,
             type: data.type || 'TEXT',
             attachmentUrl: data.attachmentUrl,
             replyTo: data.replyTo ? new Types.ObjectId(data.replyTo) : null,
@@ -159,7 +169,7 @@ export class ChatService {
         const msg = await this.messageModel.findOne({ _id: messageId, senderId: new Types.ObjectId(userId) });
         if (!msg || msg.isDeleted) return null;
 
-        msg.content = content;
+        msg.content = this.filter.clean(content);
         msg.isEdited = true;
         return (await msg.save()).populate('senderId', 'firstName lastName imageUrl');
     }
@@ -171,5 +181,22 @@ export class ChatService {
         msg.isDeleted = true;
         // Optionally keep content for audit, but flag as deleted
         return (await msg.save()).populate('senderId', 'firstName lastName imageUrl');
+    }
+
+    async translateMessage(messageId: string, targetLang: string) {
+        const message = await this.messageModel.findById(messageId);
+        if (!message) return null;
+
+        try {
+            const res = await translate(message.content, { to: targetLang });
+            return {
+                original: message.content,
+                translated: res.text,
+                lang: targetLang
+            };
+        } catch (error) {
+            console.error('Translation error:', error);
+            throw new Error('Translation failed');
+        }
     }
 }

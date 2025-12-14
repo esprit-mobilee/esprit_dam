@@ -53,7 +53,7 @@ export class ApplicationController {
       return { error: 'No file uploaded' };
     }
 
-    const fileUrl = `/uploads/cv/${file.filename}`;
+    const fileUrl = `/api/uploads/cv/${file.filename}`;
 
     // Construire un vrai DTO pour créer la candidature
     const createDto: CreateApplicationDto = {

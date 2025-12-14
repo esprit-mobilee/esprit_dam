@@ -123,7 +123,7 @@ export class InternshipOfferController {
     console.log('📎 FICHIER =>', file?.originalname);
 
     // ------ Gestion du logo ------
-    if (file) dto.logoUrl = `/uploads/logos/${file.filename}`;
+    if (file) dto.logoUrl = `/api/uploads/logos/${file.filename}`;
 
     // ------ Conversions obligatoires ------
     if (dto.duration) dto.duration = Number(dto.duration);
@@ -179,7 +179,7 @@ export class InternshipOfferController {
     console.log('📎 FILE =>', file?.originalname);
 
     // ------ logo ------
-    if (file) dto.logoUrl = `/uploads/logos/${file.filename}`;
+    if (file) dto.logoUrl = `/api/uploads/logos/${file.filename}`;
 
     // ------ conversions ------
     if (dto.duration) dto.duration = Number(dto.duration);
@@ -232,7 +232,7 @@ export class InternshipOfferController {
 
     console.log('✏️ UPDATE BY TITLE =>', dto);
 
-    if (file) dto.logoUrl = `/uploads/logos/${file.filename}`;
+    if (file) dto.logoUrl = `/api/uploads/logos/${file.filename}`;
 
     if (dto.duration) dto.duration = Number(dto.duration);
     if (dto.salary) dto.salary = Number(dto.salary);

@@ -144,4 +144,136 @@ export class EmailService {
 
     await this.transporter.sendMail(mailOptions);
   }
+  // NOUVELLE MÉTHODE POUR PASSWORD RESET
+  async sendPasswordResetEmail(email: string, code: string, name: string) {
+    const mailOptions = {
+      from: 'messaoudmay6@gmail.com',
+      to: email,
+      subject: '🔑 Réinitialisation de votre mot de passe',
+      html: `
+        <div style="font-family: Arial, sans-serif; color: #333;">
+          <h2 style="color: #D32F2F;">Réinitialisation de mot de passe</h2>
+          <p>Bonjour <strong>${name}</strong>,</p>
+          <p>Vous avez demandé la réinitialisation de votre mot de passe.</p>
+          <p>Voici votre code de vérification :</p>
+          
+          <div style="background-color: #f5f5f5; padding: 15px; border-radius: 8px; margin: 20px 0; text-align: center;">
+            <span style="font-size: 24px; font-weight: bold; letter-spacing: 5px; color: #333;">${code}</span>
+          </div>
+
+          <p>Ce code est valable pour 15 minutes.</p>
+          <p>Si vous n'êtes pas à l'origine de cette demande, vous pouvez ignorer cet email.</p>
+          
+          <p style="font-size: 12px; color: #666; margin-top: 30px;">
+            Ceci est un email automatique, merci de ne pas répondre.
+          </p>
+        </div>
+      `
+    };
+
+    await this.transporter.sendMail(mailOptions);
+  }
+
+  // EVENT EMAILS
+  async sendEventAcceptanceEmail(email: string, name: string, eventTitle: string) {
+    const mailOptions = {
+      from: 'messaoudmay6@gmail.com',
+      to: email,
+      subject: `✅ Inscription confirmée - ${eventTitle}`,
+      html: `
+        <div style="font-family: Arial, sans-serif;">
+          <h2 style="color: #2E7D32;">Félicitations ${name} !</h2>
+          <p>Votre demande de participation à l'événement <strong>${eventTitle}</strong> a été <span style="color: #2E7D32; font-weight: bold;">ACCEPTÉE</span>.</p>
+          <p>Nous avons hâte de vous y voir !</p>
+          <br>
+          <p>Cordialement,<br>L'équipe Organisation</p>
+        </div>
+      `
+    };
+    await this.transporter.sendMail(mailOptions);
+  }
+
+  async sendEventRejectionEmail(email: string, name: string, eventTitle: string) {
+    const mailOptions = {
+      from: 'messaoudmay6@gmail.com',
+      to: email,
+      subject: `❌ Mise à jour - ${eventTitle}`,
+      html: `
+        <div style="font-family: Arial, sans-serif;">
+          <h2>Bonjour ${name},</h2>
+          <p>Nous vous remercions pour votre intérêt pour l'événement <strong>${eventTitle}</strong>.</p>
+          <p>Malheureusement, nous ne pouvons pas accepter votre inscription pour le moment (places limitées ou critères non remplis).</p>
+          <p>Nous espérons vous voir lors de nos prochains événements.</p>
+          <br>
+          <p>Cordialement,<br>L'équipe Organisation</p>
+        </div>
+      `
+    };
+    await this.transporter.sendMail(mailOptions);
+  }
+
+  async sendEventInvitationEmail(
+    recipientEmail: string,
+    recipientName: string,
+    eventDetails: {
+      title: string;
+      description: string;
+      startDate: Date;
+      endDate: Date;
+      location?: string;
+      organizerName?: string;
+      organizerEmail?: string;
+    },
+    icsContent: string
+  ) {
+    const formatDate = (date: Date) => {
+      return new Intl.DateTimeFormat('fr-FR', {
+        weekday: 'long',
+        year: 'numeric',
+        month: 'long',
+        day: 'numeric',
+        hour: '2-digit',
+        minute: '2-digit',
+      }).format(date);
+    };
+
+    const mailOptions = {
+      from: 'messaoudmay6@gmail.com',
+      to: recipientEmail,
+      subject: `📅 Confirmation d'inscription - ${eventDetails.title}`,
+      html: `
+        <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
+          <h2 style="color: #dc2626;">✅ Inscription confirmée !</h2>
+          <p>Bonjour <strong>${recipientName}</strong>,</p>
+          <p>Votre inscription à l'événement <strong>${eventDetails.title}</strong> a été enregistrée avec succès.</p>
+          
+          <div style="background-color: #f3f4f6; padding: 20px; border-radius: 8px; margin: 20px 0;">
+            <h3 style="margin-top: 0; color: #1f2937;">📋 Détails de l'événement</h3>
+            <p><strong>📅 Date de début :</strong> ${formatDate(eventDetails.startDate)}</p>
+            <p><strong>🏁 Date de fin :</strong> ${formatDate(eventDetails.endDate)}</p>
+            ${eventDetails.location ? `<p><strong>📍 Lieu :</strong> ${eventDetails.location}</p>` : ''}
+            <p><strong>📝 Description :</strong></p>
+            <p style="color: #6b7280;">${eventDetails.description}</p>
+          </div>
+
+          <div style="background-color: #dbeafe; padding: 15px; border-left: 4px solid #3b82f6; margin: 20px 0;">
+            <p style="margin: 0;"><strong>💡 Astuce :</strong> Un fichier .ics est joint à cet email. Ouvrez-le pour ajouter automatiquement l'événement à votre calendrier (Google Calendar, Apple Calendar, Outlook, etc.).</p>
+          </div>
+
+          <p>Nous avons hâte de vous voir !</p>
+          <br>
+          <p>Cordialement,<br><strong>${eventDetails.organizerName || 'L\'équipe ESPRIT'}</strong></p>
+        </div>
+      `,
+      attachments: [
+        {
+          filename: `${eventDetails.title.replace(/[^a-z0-9]/gi, '_')}.ics`,
+          content: icsContent,
+          contentType: 'text/calendar; charset=utf-8; method=REQUEST',
+        },
+      ],
+    };
+
+    await this.transporter.sendMail(mailOptions);
+  }
 }

@@ -46,7 +46,7 @@ export class PostsController {
       );
     }
 
-    const imageUrl = file ? `/uploads/posts/${file.filename}` : undefined;
+    const imageUrl = file ? `/api/uploads/posts/${file.filename}` : undefined;
 
     return this.postsService.createPost(
       clubId,
@@ -122,7 +122,7 @@ export class PostsController {
     @UploadedFile() file: Express.Multer.File,
     @Req() req: any,
   ) {
-    const imageUrl = file ? `/uploads/posts/${file.filename}` : undefined;
+    const imageUrl = file ? `/api/uploads/posts/${file.filename}` : undefined;
 
     return this.postsService.updatePost(
       postId,

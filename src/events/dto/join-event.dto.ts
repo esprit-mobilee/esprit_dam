@@ -35,6 +35,13 @@ export class JoinEventDto {
   @IsOptional()
   @IsString()
   message?: string;
+
+  @ApiProperty({
+    example: [{ question: 'Taille t-shirt?', answer: 'L' }],
+    required: false,
+  })
+  @IsOptional()
+  answers?: { question: string; answer: string }[];
 }
 
 
