@@ -343,4 +343,10 @@ export class DocumentRequestService {
   }
 
 
+  async findByReference(reference: string): Promise<DocumentRequest | null> {
+    return this.documentRequestModel
+      .findOne({ documentReference: reference })
+      .populate('userId', 'firstName lastName email studentId')
+      .exec();
+  }
 }

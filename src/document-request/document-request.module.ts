@@ -8,6 +8,8 @@ import { Utilisateur, UtilisateurSchema } from 'src/utilisateurs/schemas/utilisa
 import { AuthModule } from 'src/auth/auth.module';
 import { ClubsModule } from 'src/clubs/clubs.module';
 
+import { VerificationController } from './verification.controller';
+
 @Module({
   imports: [
     MongooseModule.forFeature([
@@ -18,8 +20,8 @@ import { ClubsModule } from 'src/clubs/clubs.module';
     AuthModule, // Importé pour utiliser RolesGuard et AuthenticationGuard
     ClubsModule, // Importé pour que RolesGuard puisse utiliser ClubsService
   ],
-  controllers: [DocumentRequestController],
+  controllers: [DocumentRequestController, VerificationController],
   providers: [DocumentRequestService],
   exports: [DocumentRequestService],
 })
-export class DocumentRequestModule {}
+export class DocumentRequestModule { }

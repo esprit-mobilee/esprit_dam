@@ -34,6 +34,18 @@ export class DocumentRequest extends Document {
 
   @Prop({ type: String, required: false })
   adminFileUrl?: string;
+
+  @Prop({ type: String, unique: true, sparse: true })
+  documentReference?: string;
+
+  @Prop({ type: String })
+  verificationHash?: string;
+
+  @Prop({ type: String })
+  approvedBy?: string;
+
+  @Prop({ type: Date })
+  approvedAt?: Date;
 }
 
 export type DocumentRequestDocument = DocumentRequest & Document;
