@@ -41,6 +41,12 @@ export class RolesGuard implements CanActivate {
       return true;
     }
 
+    console.log(`[RolesGuard] 🛑 ACCESS DENIED`);
+    console.log(`[RolesGuard] User Role: ${userRole}`);
+    console.log(`[RolesGuard] Required:  ${JSON.stringify(requiredRoles)}`);
+    console.log(`[RolesGuard] User Obj:  ${JSON.stringify(user)}`);
+
+
     // The guard DOES NOT check for "presidentOf" anymore
     // That is handled in IsPresidentGuard or inside controllers
 
