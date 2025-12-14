@@ -1,0 +1,10 @@
+services:
+  - type: web
+    name: esprit-dam
+    env: node
+    packageManager: npm
+    buildCommand: npm install && npm run build
+    startCommand: npm run start:prod
+    envVars:
+      - key: NODE_VERSION
+        value: 22.16.0
