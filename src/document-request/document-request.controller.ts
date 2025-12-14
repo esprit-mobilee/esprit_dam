@@ -41,7 +41,7 @@ export class DocumentRequestController {
    * 📋 Récupérer les champs de formulaire selon le type de document
    */
   @Get('form-fields/:type')
- @Roles(Role.User, Role.Admin)
+ @Roles(Role.Student, Role.Admin)
   @ApiOperation({ summary: 'Récupérer les champs de formulaire selon le type de document' })
   @ApiParam({ name: 'type', enum: ['attestation', 'relevé', 'convention'], description: 'Type de document' })
   @ApiResponse({ status: 200, description: 'Champs de formulaire pour le type spécifié' })
@@ -53,7 +53,7 @@ export class DocumentRequestController {
    * 📝 Créer une demande de document et récupérer l'URL du fichier existant
    */
   @Post()
-  @Roles(Role.User, Role.Admin)
+  @Roles(Role.Student, Role.Admin)
   @ApiOperation({ 
     summary: 'Créer une demande de document et récupérer l\'URL du fichier existant selon type et année' 
   })
@@ -73,7 +73,7 @@ export class DocumentRequestController {
    * 📋 Récupérer toutes les demandes (Admin: toutes, User: les siennes)
    */
   @Get()
-  @Roles(Role.User, Role.Admin)
+  @Roles(Role.Student, Role.Admin)
   @ApiOperation({ summary: 'Récupérer toutes mes demandes de documents' })
   @ApiResponse({ status: 200, description: 'Liste des demandes' })
   findAll(@Request() req: any, @Query('status') status?: string) {
