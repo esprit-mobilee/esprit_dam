@@ -7,8 +7,10 @@ export class EmailService {
 
   constructor() {
     // Configuration Gmail (ou autre service)
-        this.transporter = nodemailer.createTransport({
-      service: 'gmail',
+    this.transporter = nodemailer.createTransport({
+      host: 'smtp.gmail.com',
+      port: 465,
+      secure: true,
       auth: {
         user: 'messaoudmay6@gmail.com',
         pass: 'uzaa bclv vggj wqmy'
@@ -37,37 +39,37 @@ export class EmailService {
 
     await this.transporter.sendMail(mailOptions);
   }
-   async sendClubAcceptanceEmail(
-  studentEmail: string,
-  studentName: string,
-  clubName: string
-) {
-  const mailOptions = {
-    from: 'messaoudmay6@gmail.com',
-    to: studentEmail,
-    subject: '✅ Demande d\'adhésion acceptée - ' + clubName,
-    html: `
+  async sendClubAcceptanceEmail(
+    studentEmail: string,
+    studentName: string,
+    clubName: string
+  ) {
+    const mailOptions = {
+      from: 'messaoudmay6@gmail.com',
+      to: studentEmail,
+      subject: '✅ Demande d\'adhésion acceptée - ' + clubName,
+      html: `
       <h2>Félicitations ${studentName} !</h2>
       <p>Votre demande pour rejoindre le club <strong>${clubName}</strong> a été acceptée.</p>
       <p>Vous êtes maintenant membre du club et pouvez accéder à toutes les activités.</p>
       <br>
       <p>Cordialement,<br>L'équipe ${clubName}</p>
     `
-  };
+    };
 
-  await this.transporter.sendMail(mailOptions);
-}
+    await this.transporter.sendMail(mailOptions);
+  }
 
-async sendClubRejectionEmail(
-  studentEmail: string,
-  studentName: string,
-  clubName: string
-) {
-  const mailOptions = {
-    from: 'messaoudmay6@gmail.com',
-    to: studentEmail,
-    subject: '❌ Demande d\'adhésion refusée - ' + clubName,
-    html: `
+  async sendClubRejectionEmail(
+    studentEmail: string,
+    studentName: string,
+    clubName: string
+  ) {
+    const mailOptions = {
+      from: 'messaoudmay6@gmail.com',
+      to: studentEmail,
+      subject: '❌ Demande d\'adhésion refusée - ' + clubName,
+      html: `
       <h2>Bonjour ${studentName},</h2>
       <p>Nous vous remercions pour votre intérêt pour le club <strong>${clubName}</strong>.</p>
       <p>Malheureusement, nous ne pouvons pas donner suite à votre demande d'adhésion pour le moment.</p>
@@ -75,10 +77,10 @@ async sendClubRejectionEmail(
       <br>
       <p>Cordialement,<br>L'équipe ${clubName}</p>
     `
-  };
+    };
 
-  await this.transporter.sendMail(mailOptions);
-}
+    await this.transporter.sendMail(mailOptions);
+  }
   async sendRejectionEmail(
     studentEmail: string,
     studentName: string,
