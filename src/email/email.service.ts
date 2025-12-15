@@ -9,7 +9,7 @@ export class EmailService {
     // Configuration Gmail (ou autre service)
     this.transporter = nodemailer.createTransport({
       host: 'smtp.gmail.com',
-      port: 465,
+      port: 587,
       secure: true,
       auth: {
         user: 'messaoudmay6@gmail.com',
