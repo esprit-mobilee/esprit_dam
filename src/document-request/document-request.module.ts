@@ -7,6 +7,7 @@ import { DocumentFile, DocumentFileSchema } from './schemas/document-file.schema
 import { Utilisateur, UtilisateurSchema } from 'src/utilisateurs/schemas/utilisateur.schema';
 import { AuthModule } from 'src/auth/auth.module';
 import { ClubsModule } from 'src/clubs/clubs.module';
+import { EmailModule } from 'src/email/email.module';
 
 @Module({
   imports: [
@@ -17,9 +18,10 @@ import { ClubsModule } from 'src/clubs/clubs.module';
     ]),
     AuthModule, // Importé pour utiliser RolesGuard et AuthenticationGuard
     ClubsModule, // Importé pour que RolesGuard puisse utiliser ClubsService
+    EmailModule,
   ],
   controllers: [DocumentRequestController],
   providers: [DocumentRequestService],
   exports: [DocumentRequestService],
 })
-export class DocumentRequestModule {}
+export class DocumentRequestModule { }

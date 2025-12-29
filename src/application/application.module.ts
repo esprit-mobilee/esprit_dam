@@ -6,6 +6,7 @@ import { Application, ApplicationSchema } from './schemas/application.schema';
 import { EmailService } from './email.service';
 import { Utilisateur, UtilisateurSchema } from '../utilisateurs/schemas/utilisateur.schema';
 import { CalendarModule } from '../calendar/calendar.module';
+import { NotificationsModule } from '../notifications/notifications.module';
 
 @Module({
   imports: [
@@ -14,6 +15,7 @@ import { CalendarModule } from '../calendar/calendar.module';
       { name: Utilisateur.name, schema: UtilisateurSchema },
     ]),
     CalendarModule,
+    NotificationsModule,
   ],
   controllers: [ApplicationController],
   providers: [ApplicationService, EmailService],

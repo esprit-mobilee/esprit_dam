@@ -11,6 +11,7 @@ import {
   UseGuards,
   UseInterceptors,
   ForbiddenException,
+  NotFoundException,
 } from '@nestjs/common';
 import { PostsService } from './posts.service';
 import { CreatePostDto } from './dto/create-post.dto';
@@ -98,18 +99,31 @@ export class PostsController {
     return this.postsService.getPostById(id);
   }
 
-  // COMPATIBILITY: alias for getClubPosts to support iOS app using /api/posts/:clubId
-  @Get(':clubId')
-  async getClubPostsAlias(
-    @Param('clubId') clubId: string,
+  // COMPATIBILITY: Polymorphic endpoint for iOS (List) and Android (Detail)
+  @Get(':id')
+  async getPostOrClubPosts(
+    @Param('id') id: string,
     @Req() req: any,
   ) {
     const { search, page, limit } = req.query;
-    return this.postsService.getPostsByClub(clubId, {
-      search,
-      page: page ? parseInt(page) : undefined,
-      limit: limit ? parseInt(limit) : undefined,
-    });
+
+    // 1. First try to treat 'id' as a Club ID (Legacy iOS behavior)
+    try {
+      // We need to check if club exists first. 
+      // getPostsByClub throws NotFoundException if club doesn't exist.
+      return await this.postsService.getPostsByClub(id, {
+        search,
+        page: page ? parseInt(page) : undefined,
+        limit: limit ? parseInt(limit) : undefined,
+      });
+    } catch (error) {
+      if (error instanceof NotFoundException) {
+        // 2. If Club not found, assume 'id' is a Post ID (New Android behavior)
+        // This will throw its own NotFoundException if Post is not found either
+        return await this.postsService.getPostById(id);
+      }
+      throw error;
+    }
   }
 
   // PRESIDENT/CLUB: update post

@@ -76,4 +76,18 @@ export class NotificationsController {
     async delete(@Param('id') id: string) {
         return this.notificationsService.delete(id);
     }
+
+    // Get notifications for the current user
+    @Get('user/me')
+    async getMyNotifications(@Req() req: any) {
+        const userId = req.user._id || req.user.id;
+        return this.notificationsService.getUserNotifications(userId);
+    }
+
+    // Get unread count for the current user
+    @Get('user/me/unread-count')
+    async getMyUnreadCount(@Req() req: any) {
+        const userId = req.user._id || req.user.id;
+        return { count: await this.notificationsService.getUserUnreadCount(userId) };
+    }
 }

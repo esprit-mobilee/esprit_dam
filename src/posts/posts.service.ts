@@ -9,6 +9,9 @@ import { Post, PostDocument } from './schemas/post.schema';
 import { Club, ClubDocument } from 'src/clubs/schemas/club.schema';
 import { Utilisateur, UtilisateurDocument } from 'src/utilisateurs/schemas/utilisateur.schema';
 import { Role } from 'src/auth/enums/role.enum';
+import { NotificationsService } from 'src/notifications/notifications.service';
+import { NotificationsGateway } from 'src/notifications/notifications.gateway';
+import { NotificationType } from 'src/notifications/schemas/notification.schema';
 
 @Injectable()
 export class PostsService {
@@ -21,6 +24,9 @@ export class PostsService {
 
     @InjectModel(Utilisateur.name)
     private readonly userModel: Model<UtilisateurDocument>,
+
+    private readonly notificationsService: NotificationsService,
+    private readonly notificationsGateway: NotificationsGateway,
   ) { }
 
   // Create a post — ONLY PRESIDENT
@@ -53,6 +59,42 @@ export class PostsService {
       imageUrl,
       authorId: user._id,
     });
+
+    // 🔔 Notify all club members of new post
+    try {
+      const clubWithMembers = await this.clubModel
+        .findById(clubId)
+        .populate('members')
+        .exec();
+
+      if (clubWithMembers && clubWithMembers.members) {
+        const members = clubWithMembers.members as any[];
+
+        for (const member of members) {
+          // Don't notify the author
+          if (member._id.toString() === userId) continue;
+
+          const notification = await this.notificationsService.create(
+            NotificationType.CLUB_POST_CREATED,
+            `Nouvelle publication dans ${club.name}`,
+            {
+              userId: member._id.toString(),
+              clubId: clubId,
+              postId: (post._id as any).toString(),
+            }
+          );
+
+          this.notificationsGateway.sendToUser(
+            member._id.toString(),
+            notification
+          );
+        }
+
+        console.log(`📢 Post creation notifications sent to ${members.length - 1} members`);
+      }
+    } catch (error) {
+      console.error('❌ Failed to send post creation notifications:', error);
+    }
 
     return post;
   }
@@ -220,7 +262,7 @@ export class PostsService {
     };
   }
   async likePost(postId: string, userId: string): Promise<Post> {
-    const post = await this.postModel.findById(postId);
+    const post = await this.postModel.findById(postId).populate('authorId');
     if (!post) throw new NotFoundException('Publication introuvable');
 
     const userObjectId = new Types.ObjectId(userId);
@@ -233,6 +275,8 @@ export class PostsService {
 
     // Toggle like
     const likeIndex = post.likes.indexOf(userObjectId);
+    const wasLiked = likeIndex > -1;
+
     if (likeIndex > -1) {
       post.likes.splice(likeIndex, 1);
     } else {
@@ -240,6 +284,31 @@ export class PostsService {
     }
 
     await post.save();
+
+    // 🔔 Notify post author of new like (only if adding like, not removing)
+    if (!wasLiked && (post.authorId as any)._id.toString() !== userId) {
+      try {
+        const liker = await this.userModel.findById(userId);
+        if (liker) {
+          const notification = await this.notificationsService.create(
+            NotificationType.POST_LIKED,
+            `${liker.firstName} ${liker.lastName} a aimé votre publication`,
+            {
+              userId: (post.authorId as any)._id.toString(),
+              postId: (post._id as any).toString(),
+            }
+          );
+
+          this.notificationsGateway.sendToUser(
+            (post.authorId as any)._id.toString(),
+            notification
+          );
+        }
+      } catch (error) {
+        console.error('❌ Failed to send post like notification:', error);
+      }
+    }
+
     return post;
   }
 
@@ -263,6 +332,32 @@ export class PostsService {
       post.dislikes.push(userObjectId);
     }
 
+    // 🔔 Notify post author of dislike (only if adding dislike)
+    const authorId = (post.authorId as any)._id?.toString() || post.authorId.toString();
+
+    if (dislikeIndex === -1 && authorId !== userId) {
+      try {
+        const user = await this.userModel.findById(userId);
+        if (user) {
+          const notification = await this.notificationsService.create(
+            NotificationType.POST_DISLIKED,
+            `${user.firstName} ${user.lastName} a réagi négativement à votre publication`,
+            {
+              userId: authorId,
+              postId: (post._id as any).toString(),
+            }
+          );
+
+          this.notificationsGateway.sendToUser(
+            authorId,
+            notification
+          );
+        }
+      } catch (error) {
+        console.error('❌ Failed to send post dislike notification:', error);
+      }
+    }
+
     await post.save();
     return post;
   }
@@ -283,6 +378,31 @@ export class PostsService {
     });
 
     await post.save();
+
+    // 🔔 Notify post author of new comment
+    const authorId = (post.authorId as any)._id?.toString() || post.authorId.toString();
+
+    if (authorId !== userId) {
+      try {
+        const notification = await this.notificationsService.create(
+          NotificationType.POST_COMMENTED,
+          `${user.firstName} ${user.lastName} a commenté votre publication`,
+          {
+            userId: authorId,
+            postId: (post._id as any).toString(),
+            commentId: (post.comments[post.comments.length - 1] as any)._id.toString(),
+          }
+        );
+
+        this.notificationsGateway.sendToUser(
+          authorId,
+          notification
+        );
+      } catch (error) {
+        console.error('❌ Failed to send post comment notification:', error);
+      }
+    }
+
     return post;
   }
 
@@ -358,6 +478,8 @@ export class PostsService {
       r => r.userId.toString() === userId && r.emoji === emoji
     );
 
+    const wasReacted = existingReactionIndex > -1;
+
     if (existingReactionIndex > -1) {
       // Remove reaction (toggle off)
       comment.reactions.splice(existingReactionIndex, 1);
@@ -378,6 +500,32 @@ export class PostsService {
     }
 
     await post.save();
+
+    // 🔔 Notify comment author of reaction (only if adding, not removing)
+    if (!wasReacted && comment.userId.toString() !== userId && emoji === '❤️') {
+      try {
+        const reactor = await this.userModel.findById(userId);
+        if (reactor) {
+          const notification = await this.notificationsService.create(
+            NotificationType.COMMENT_LIKED,
+            `${reactor.firstName} ${reactor.lastName} a aimé votre commentaire`,
+            {
+              userId: comment.userId.toString(),
+              postId: (post._id as any).toString(),
+              commentId: commentId,
+            }
+          );
+
+          this.notificationsGateway.sendToUser(
+            comment.userId.toString(),
+            notification
+          );
+        }
+      } catch (error) {
+        console.error('❌ Failed to send comment reaction notification:', error);
+      }
+    }
+
     return post;
   }
 
@@ -412,6 +560,29 @@ export class PostsService {
     });
 
     await post.save();
+
+    // 🔔 Notify comment author of reply
+    if (comment.userId.toString() !== userId) {
+      try {
+        const notification = await this.notificationsService.create(
+          NotificationType.COMMENT_REPLIED,
+          `${user.firstName} ${user.lastName} a répondu à votre commentaire`,
+          {
+            userId: comment.userId.toString(),
+            postId: (post._id as any).toString(),
+            commentId: commentId,
+          }
+        );
+
+        this.notificationsGateway.sendToUser(
+          comment.userId.toString(),
+          notification
+        );
+      } catch (error) {
+        console.error('❌ Failed to send comment reply notification:', error);
+      }
+    }
+
     return post;
   }
 }

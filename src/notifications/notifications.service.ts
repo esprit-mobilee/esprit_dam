@@ -16,18 +16,47 @@ export class NotificationsService {
 
     // Create a notification
     async create(
-        clubId: string,
         type: NotificationType,
-        userId: string,
         message: string,
+        options?: {
+            clubId?: string;
+            userId?: string;
+            internshipOfferId?: string;
+            applicationId?: string;
+            postId?: string;
+            commentId?: string;
+            eventId?: string;
+        }
     ): Promise<Notification> {
-        return this.notificationModel.create({
-            clubId: new Types.ObjectId(clubId),
+        const notificationData: any = {
             type,
-            userId: new Types.ObjectId(userId),
             message,
             read: false,
-        });
+        };
+
+        if (options?.clubId) {
+            notificationData.clubId = new Types.ObjectId(options.clubId);
+        }
+        if (options?.userId) {
+            notificationData.userId = new Types.ObjectId(options.userId);
+        }
+        if (options?.internshipOfferId) {
+            notificationData.internshipOfferId = new Types.ObjectId(options.internshipOfferId);
+        }
+        if (options?.applicationId) {
+            notificationData.applicationId = new Types.ObjectId(options.applicationId);
+        }
+        if (options?.postId) {
+            notificationData.postId = new Types.ObjectId(options.postId);
+        }
+        if (options?.commentId) {
+            notificationData.commentId = new Types.ObjectId(options.commentId);
+        }
+        if (options?.eventId) {
+            notificationData.eventId = new Types.ObjectId(options.eventId);
+        }
+
+        return this.notificationModel.create(notificationData);
     }
 
     // Get all notifications for a club
@@ -67,6 +96,33 @@ export class NotificationsService {
         return this.notificationModel.countDocuments({
             clubId: new Types.ObjectId(clubId),
             read: false,
+        });
+    }
+
+    // Get all notifications for a user (not just club-specific)
+    async getUserNotifications(userId: string): Promise<Notification[]> {
+        return this.notificationModel
+            .find({
+                $or: [
+                    { userId: new Types.ObjectId(userId) },
+                    { userId: { $exists: false } } // Global notifications
+                ]
+            })
+            .populate('internshipOfferId')
+            .populate('applicationId')
+            .populate('eventId')
+            .populate('userId', 'firstName lastName avatar')
+            .sort({ createdAt: -1 })
+            .exec();
+    }
+
+    // Get unread count for a user
+    async getUserUnreadCount(userId: string): Promise<number> {
+        return this.notificationModel.countDocuments({
+            $or: [
+                { userId: new Types.ObjectId(userId), read: false },
+                { userId: { $exists: false }, read: false }
+            ]
         });
     }
 }

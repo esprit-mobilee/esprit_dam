@@ -17,6 +17,7 @@ import { UpdateClubDto } from './dto/update-club.dto';
 import { CreateFullClubDto } from './dto/create-full-club.dto';
 import { Role } from 'src/auth/enums/role.enum';
 import { NotificationsService } from 'src/notifications/notifications.service';
+import { NotificationsGateway } from 'src/notifications/notifications.gateway';
 import { NotificationType } from 'src/notifications/schemas/notification.schema';
 import { EmailService } from '../application/email.service'; // Ajuste le chemin selon ta structure
 @Injectable()
@@ -29,8 +30,10 @@ export class ClubsService {
     @InjectModel(Utilisateur.name)
     private readonly userModel: Model<UtilisateurDocument>,
     private readonly notificationsService: NotificationsService,
-    private readonly emailService: EmailService, // ← NOUVELLE LIGNE
+    private readonly notificationsGateway: NotificationsGateway, // Injected Gateway
+    private readonly emailService: EmailService,
   ) { }
+
   // --------------------------------------------------------
   // CREATE FULL CLUB + CLUB ACCOUNT (ADMIN)
   // --------------------------------------------------------
@@ -232,10 +235,9 @@ export class ClubsService {
 
     // Create notification for club
     await this.notificationsService.create(
-      String(club._id),
       NotificationType.JOIN_REQUEST,
-      String(user._id),
       `${user.firstName} ${user.lastName} a rejoint le club`,
+      { clubId: String(club._id), userId: String(user._id) }
     );
 
     return this.findOne(clubId);
@@ -249,7 +251,11 @@ export class ClubsService {
     userId: string,
     answers?: Array<{ question: string; answer: string }>,
   ) {
-    const club = await this.clubModel.findById(clubId);
+    // Populate president and account to know who to notify
+    const club = await this.clubModel.findById(clubId)
+      .populate('president')
+      .populate('account');
+
     if (!club) throw new NotFoundException('Club introuvable');
 
     if (!club.joinEnabled) {
@@ -262,13 +268,10 @@ export class ClubsService {
     // Debug logging
     console.log('Club members:', club.members);
     console.log('User ID:', String(user._id));
-    console.log('User clubs array:', user.clubs);
 
     const alreadyMember = club.members.some(
       (m) => String(m) === String(user._id),
     );
-
-    console.log('Already member check result:', alreadyMember);
 
     if (alreadyMember) {
       throw new BadRequestException('Vous êtes déjà membre de ce club');
@@ -295,24 +298,42 @@ export class ClubsService {
       status: JoinRequestStatus.PENDING,
     });
 
-    console.log('Created join request:', {
-      id: joinRequest._id,
-      clubId: String(joinRequest.clubId),
-      userId: String(joinRequest.userId),
-      status: joinRequest.status,
-    });
+    // Notify Club President and/or Account
+    const notificationMessage = `${user.firstName} ${user.lastName} a demandé à rejoindre ${club.name}`;
 
-    // Create notification for club president/account
-    const notificationContent = answers && answers.length > 0
-      ? `${user.firstName} ${user.lastName} a demandé à rejoindre le club`
-      : `${user.firstName} ${user.lastName} a demandé à rejoindre le club`;
+    const recipients = new Set<string>();
 
-    await this.notificationsService.create(
-      String(club._id),
-      NotificationType.JOIN_REQUEST,
-      String(user._id),
-      notificationContent,
-    );
+    // Add President
+    if (club.president) {
+      const presidentId = (club.president as any)._id?.toString() || String(club.president);
+      recipients.add(presidentId);
+    }
+
+    // Add Club Account
+    if (club.account) {
+      const accountId = (club.account as any)._id?.toString() || String(club.account);
+      recipients.add(accountId);
+    }
+
+    for (const recipientId of recipients) {
+      try {
+        // Create DB Notification for the Recipient
+        const notification = await this.notificationsService.create(
+          NotificationType.JOIN_REQUEST,
+          notificationMessage,
+          {
+            clubId: String(club._id),
+            userId: recipientId // Target User (President/Admin)
+          }
+        );
+
+        // Send Real-time Socket Event
+        this.notificationsGateway.sendToUser(recipientId, notification);
+
+      } catch (error) {
+        console.error(`Failed to notify ${recipientId} of join request:`, error);
+      }
+    }
 
     return { message: 'Demande envoyée avec succès', requestId: String(joinRequest._id) };
   }
@@ -444,10 +465,9 @@ export class ClubsService {
 
     // Notify the user (in-app)
     await this.notificationsService.create(
-      String(user._id),
       NotificationType.JOIN_REQUEST,
-      String(club._id),
       `Votre demande pour rejoindre ${club.name} a été acceptée`,
+      { clubId: String(club._id), userId: String(user._id) }
     );
 
     // ✅ SEND EMAIL
@@ -485,10 +505,9 @@ export class ClubsService {
     // Notify the user (in-app)
     if (club && user) {
       await this.notificationsService.create(
-        String(user._id),
         NotificationType.JOIN_REQUEST,
-        String(club._id),
         `Votre demande pour rejoindre ${club.name} a été refusée`,
+        { clubId: String(club._id), userId: String(user._id) }
       );
 
       // ✅ SEND EMAIL

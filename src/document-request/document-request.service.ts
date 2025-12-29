@@ -5,6 +5,7 @@ import { DocumentRequest, DocumentRequestDocument, DocumentType } from './schema
 import { DocumentFile, DocumentFileDocument } from './schemas/document-file.schema';
 import { CreateDocumentRequestDto } from './dto/create-document-request.dto';
 import { Utilisateur, UtilisateurDocument } from 'src/utilisateurs/schemas/utilisateur.schema';
+import { EmailService } from 'src/email/email.service';
 
 @Injectable()
 export class DocumentRequestService {
@@ -15,6 +16,7 @@ export class DocumentRequestService {
     private readonly documentFileModel: Model<DocumentFileDocument>,
     @InjectModel(Utilisateur.name)
     private readonly userModel: Model<UtilisateurDocument>,
+    private readonly emailService: EmailService,
   ) { }
 
   /**
@@ -228,7 +230,7 @@ export class DocumentRequestService {
    * 👮‍♂️ Mettre à jour le statut d'une demande (Admin)
    */
   async updateStatus(id: string, status: string, rejectionReason?: string): Promise<DocumentRequest> {
-    const request = await this.documentRequestModel.findById(id);
+    const request = await this.documentRequestModel.findById(id).populate('userId');
     if (!request) {
       throw new NotFoundException(`Demande ${id} introuvable`);
     }
@@ -241,14 +243,28 @@ export class DocumentRequestService {
       request.rejectionReason = rejectionReason;
     }
 
-    return request.save();
+    const savedRequest = await request.save();
+
+    // EMAIL NOTIFICATION
+    const user = request.userId as any; // Populated
+    if (user && user.email) {
+      await this.emailService.sendDocumentRequestStatusEmail(
+        user.email,
+        `${user.firstName} ${user.lastName}`,
+        request.type,
+        status,
+        rejectionReason
+      );
+    }
+
+    return savedRequest;
   }
 
   /**
    * 📤 Uploader le document final (Admin)
    */
   async uploadAdminFile(id: string, file: Express.Multer.File): Promise<DocumentRequest> {
-    const request = await this.documentRequestModel.findById(id);
+    const request = await this.documentRequestModel.findById(id).populate('userId');
     if (!request) {
       throw new NotFoundException(`Demande ${id} introuvable`);
     }
@@ -270,7 +286,20 @@ export class DocumentRequestService {
     request.status = 'APPROVED';
     request.adminFileUrl = fileUrl;
 
-    return request.save();
+    const savedRequest = await request.save();
+
+    // EMAIL NOTIFICATION
+    const user = request.userId as any; // Populated
+    if (user && user.email) {
+      await this.emailService.sendDocumentRequestStatusEmail(
+        user.email,
+        `${user.firstName} ${user.lastName}`,
+        request.type,
+        'APPROVED'
+      );
+    }
+
+    return savedRequest;
   }
 
   /**

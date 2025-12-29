@@ -276,4 +276,53 @@ export class EmailService {
 
     await this.transporter.sendMail(mailOptions);
   }
+
+  async sendDocumentRequestStatusEmail(
+    studentEmail: string,
+    studentName: string,
+    documentType: string,
+    status: string,
+    rejectionReason?: string
+  ) {
+    let subject = '';
+    let content = '';
+
+    if (status === 'APPROVED') {
+      subject = `✅ Demande de document approuvée - ${documentType}`;
+      content = `
+        <div style="font-family: Arial, sans-serif;">
+          <h2 style="color: #2E7D32;">Bonne nouvelle ${studentName} !</h2>
+          <p>Votre demande de document <strong>${documentType}</strong> a été <span style="color: #2E7D32; font-weight: bold;">APPROUVÉE</span>.</p>
+          <p>Vous pouvez maintenant télécharger votre document depuis l'application.</p>
+          <br>
+          <p>Cordialement,<br>L'administration</p>
+        </div>
+      `;
+    } else if (status === 'REJECTED') {
+      subject = `❌ Mise à jour de votre demande - ${documentType}`;
+      content = `
+        <div style="font-family: Arial, sans-serif;">
+          <h2 style="color: #D32F2F;">Bonjour ${studentName},</h2>
+          <p>Votre demande de document <strong>${documentType}</strong> a été <span style="color: #D32F2F; font-weight: bold;">REFUSÉE</span>.</p>
+          <div style="background-color: #ffebee; padding: 15px; border-radius: 5px; margin: 15px 0;">
+            <p style="margin: 0; color: #b71c1c;"><strong>Raison du refus :</strong></p>
+            <p style="margin: 5px 0 0 0;">${rejectionReason || 'Non spécifiée'}</p>
+          </div>
+          <p>Vous pouvez soumettre une nouvelle demande si nécessaire.</p>
+          <br>
+          <p>Cordialement,<br>L'administration</p>
+        </div>
+      `;
+    }
+
+    if (subject && content) {
+      const mailOptions = {
+        from: 'messaoudmay6@gmail.com',
+        to: studentEmail,
+        subject: subject,
+        html: content
+      };
+      await this.transporter.sendMail(mailOptions);
+    }
+  }
 }

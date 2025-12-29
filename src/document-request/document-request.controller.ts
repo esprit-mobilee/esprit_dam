@@ -41,7 +41,7 @@ export class DocumentRequestController {
    * 📋 Récupérer les champs de formulaire selon le type de document
    */
   @Get('form-fields/:type')
- @Roles(Role.Student, Role.Admin)
+  @Roles(Role.Student, Role.Admin)
   @ApiOperation({ summary: 'Récupérer les champs de formulaire selon le type de document' })
   @ApiParam({ name: 'type', enum: ['attestation', 'relevé', 'convention'], description: 'Type de document' })
   @ApiResponse({ status: 200, description: 'Champs de formulaire pour le type spécifié' })
@@ -54,8 +54,8 @@ export class DocumentRequestController {
    */
   @Post()
   @Roles(Role.Student, Role.Admin)
-  @ApiOperation({ 
-    summary: 'Créer une demande de document et récupérer l\'URL du fichier existant selon type et année' 
+  @ApiOperation({
+    summary: 'Créer une demande de document et récupérer l\'URL du fichier existant selon type et année'
   })
   @ApiResponse({
     status: 201,
@@ -89,6 +89,17 @@ export class DocumentRequestController {
   @ApiOperation({ summary: 'Changer le statut d\'une demande (Admin uniquement)' })
   @ApiResponse({ status: 200, description: 'Statut mis à jour' })
   updateStatus(@Param('id') id: string, @Body() updateStatusDto: UpdateStatusDto) {
+    return this.documentRequestService.updateStatus(id, updateStatusDto.status, updateStatusDto.rejectionReason);
+  }
+
+  /**
+   * 👮‍♂️ Changer le statut d'une demande (Admin) - Route générique
+   */
+  @Patch(':id')
+  @Roles(Role.Admin)
+  @ApiOperation({ summary: 'Changer le statut d\'une demande (Admin uniquement)' })
+  @ApiResponse({ status: 200, description: 'Statut mis à jour' })
+  update(@Param('id') id: string, @Body() updateStatusDto: UpdateStatusDto) {
     return this.documentRequestService.updateStatus(id, updateStatusDto.status, updateStatusDto.rejectionReason);
   }
 
@@ -127,7 +138,7 @@ export class DocumentRequestController {
   @ApiResponse({ status: 200, description: 'Liste des fichiers avec URLs' })
   getFileUrls(@Request() req: any) {
     return this.documentRequestService.getFileUrlByUserId(req.user.userId);
-  } 
+  }
 
   /**
    * 📥 Récupérer l'URL d'un fichier par son ID

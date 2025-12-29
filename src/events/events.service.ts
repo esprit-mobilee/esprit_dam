@@ -6,6 +6,7 @@ import { CreateEventDto } from './dto/create-event.dto';
 import { UpdateEventDto } from './dto/update-event.dto';
 import { JoinEventDto } from './dto/join-event.dto';
 import { NotificationsService } from 'src/notifications/notifications.service';
+import { NotificationsGateway } from 'src/notifications/notifications.gateway';
 import { NotificationType } from 'src/notifications/schemas/notification.schema';
 
 import { EmailService } from 'src/email/email.service';
@@ -24,6 +25,7 @@ export class EventsService {
     @InjectModel(Utilisateur.name)
     private readonly userModel: Model<UtilisateurDocument>,
     private readonly notificationsService: NotificationsService,
+    private readonly notificationsGateway: NotificationsGateway,
     private readonly emailService: EmailService,
     private readonly calendarService: CalendarService,
   ) { }
@@ -104,7 +106,51 @@ export class EventsService {
       imageUrl,
     });
 
-    return event.save();
+    const savedEvent = await event.save();
+
+    // 🔔 Notify club members of new event
+    try {
+      const organizer = await this.userModel.findById(dto.organizerId);
+      const clubId = organizer ? ((organizer.club || organizer.presidentOf) as any) : null;
+
+      if (clubId) {
+        // Fetch the club to get its members
+        const club = await this.clubModel.findById(clubId).populate('members');
+
+        if (club && club.members && club.members.length > 0) {
+          // Create notification in database
+          const notification = await this.notificationsService.create(
+            NotificationType.CLUB_EVENT_CREATED,
+            `Nouvel événement: ${dto.title}`,
+            {
+              clubId: clubId.toString(),
+              eventId: (savedEvent._id as any).toString(),
+            }
+          );
+
+          // Get member IDs as strings
+          const memberIds = club.members.map((member: any) => {
+            if (typeof member === 'object' && member._id) {
+              return member._id.toString();
+            }
+            return member.toString();
+          });
+
+          // Send notification to all club members
+          this.notificationsGateway.sendToUsers(memberIds, notification);
+          console.log(`📢 Event notification sent to ${memberIds.length} club members`);
+        } else {
+          console.log('⚠️ No members found in club, skipping notification');
+        }
+      } else {
+        console.log('⚠️ No club found for organizer, skipping notification');
+      }
+
+    } catch (error) {
+      console.error('❌ Failed to send event creation notifications:', error);
+    }
+
+    return savedEvent;
   }
 
   async findAll(options?: {
@@ -331,10 +377,9 @@ export class EventsService {
 
           if (club) {
             await this.notificationsService.create(
-              String(club._id),
               NotificationType.EVENT_REGISTRATION,
-              String(userObjectId),
               `${participantName} s'est inscrit à l'événement "${event.title}"`,
+              { clubId: String(club._id), userId: String(userObjectId) }
             );
           } else {
             console.warn(`Club not found for organizer ${event.organizerId}`);
