@@ -8,6 +8,10 @@ import { AppService } from './app.service';
 import { UtilisateursModule } from './utilisateurs/utilisateurs.module';
 import { AuthModule } from './auth/auth.module';
 import { ClubsModule } from './clubs/clubs.module';
+import { MessageModule } from './message/message.module';
+//import { AnnouncementModule } from './announcement/announcement.module';
+//import { AnnoucementModule } from './annoucement/annoucement.module';
+import { AnnouncementModule } from './announcement/announcement.module';
 import { DocumentRequestModule } from './document-request/document-request.module';
 import { EventsModule } from './events/events.module';
 import { InternshipOfferModule } from './internship-offer/internship-offer.module';
@@ -36,6 +40,10 @@ import { ChatModule } from './chat/chat.module';
     UtilisateursModule,
     AuthModule,
     ClubsModule,
+    MessageModule,
+    AnnouncementModule,
+    //AnnoucementModule,
+    //AnnouncementModule,
     DocumentRequestModule,
     EventsModule,
     InternshipOfferModule,

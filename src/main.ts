@@ -28,14 +28,14 @@ async function bootstrap() {
   // 👇 On tape l'app en NestExpressApplication pour avoir useStaticAssets typé
   const app = await NestFactory.create<NestExpressApplication>(AppModule);
 
-  // ---------- CORS ----------
+  // ✅ Autoriser les requêtes depuis le front (utile pour React, Angular ou Flutter)
   app.enableCors({
-    origin: '*',
-    methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH'],
+    origin: '*', // tu peux restreindre à ton domaine plus tard
+    methods: ['GET', 'POST', 'PUT', 'DELETE'],
     allowedHeaders: ['Content-Type', 'Authorization'],
   });
 
-  // ---------- Préfix global ----------
+  // ✅ Préfixe global pour toutes les routes
   app.setGlobalPrefix('api');
 
   // ---------- VALIDATION PIPE ----------
@@ -77,7 +77,7 @@ async function bootstrap() {
     }),
   );
 
-  // ---------- GLOBAL EXCEPTION FILTER ----------
+  // ✅ Gestion globale des exceptions
   app.useGlobalFilters(new AllExceptionsFilter());
 
   // ---------- SERVIR LES FICHIERS UPLOADÉS ----------
@@ -90,7 +90,7 @@ async function bootstrap() {
   const config = new DocumentBuilder()
     .setTitle('API ESPRIT Connect')
     .setDescription(
-      `Documentation API (Clubs, Événements, Stages, Applications, Auth, Administration)`,
+      'Documentation officielle de l’API ESPRIT Connect (Clubs, Étudiants, Administration, Authentification)',
     )
     .setVersion('1.0')
     .addBearerAuth(
@@ -99,8 +99,7 @@ async function bootstrap() {
         scheme: 'bearer',
         bearerFormat: 'JWT',
         name: 'Authorization',
-        description:
-          'Token JWT — utilisez : Bearer <votre_token>',
+        description: 'Entrez votre token JWT au format : Bearer <votre_token>',
         in: 'header',
       },
       'access-token',
@@ -113,11 +112,10 @@ async function bootstrap() {
     customCss: '.swagger-ui .topbar { display: none }',
   });
 
-  // ---------- START SERVER ----------
+  // ✅ Lancer le serveur
   const port = process.env.PORT ?? 3000;
-  const localIp = getLocalIp();
+await app.listen(port, '0.0.0.0');
 
-  await app.listen(port, '0.0.0.0');
 
   console.log('🚀 Serveur démarré avec validation DTO et filtres globaux');
   console.log(`🌐 Local   : http://localhost:${port}/api`);
