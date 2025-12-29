@@ -76,7 +76,8 @@ async function bootstrap() {
 
   // ✅ Lancer le serveur
   const port = process.env.PORT ?? 3000;
-  await app.listen(port);
+await app.listen(port, '0.0.0.0');
+
 
   console.log('✅ ValidationPipe & AllExceptionsFilter activés');
   console.log(`🚀 Serveur en ligne : http://localhost:${port}/api`);

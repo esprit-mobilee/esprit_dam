@@ -1,25 +1,46 @@
 import { Prop, Schema, SchemaFactory } from '@nestjs/mongoose';
 import { Document, Types } from 'mongoose';
-import { Utilisateur } from '../../utilisateurs/schemas/utilisateur.schema';
 
 @Schema({ timestamps: true })
 export class Message extends Document {
-  @Prop({ type: Types.ObjectId, ref: 'Utilisateur', required: true })
-  senderId: Types.ObjectId | Utilisateur;
 
   @Prop({ type: Types.ObjectId, ref: 'Utilisateur', required: true })
-  receiverId: Types.ObjectId | Utilisateur;
+  senderId: Types.ObjectId;
+
+  @Prop({ type: Types.ObjectId, ref: 'Utilisateur', required: true })
+  receiverId: Types.ObjectId;
 
   @Prop({ required: true })
   content: string;
 
   @Prop({ default: 'text' })
   type: string;
-  @Prop()
-createdAt?: Date;
 
-@Prop()
-updatedAt?: Date;
+  @Prop({ default: false })
+  isRead: boolean;
+
+  @Prop({ type: Date, default: null })
+  readAt: Date | null;
+
+  // 👇👇 AJOUT OBLIGATOIRE pour enlever l’erreur
+  @Prop({ type: Date })
+  createdAt: Date;
+
+  @Prop({ type: Date })
+  updatedAt: Date;
+  @Prop({
+  type: [
+    {
+      userId: { type: Types.ObjectId, ref: 'Utilisateur' },
+      emoji: { type: String }
+    }
+  ],
+  default: []
+})
+reactions: {
+  userId: Types.ObjectId;
+  emoji: string;
+}[];
 
 }
 

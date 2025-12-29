@@ -1,0 +1,598 @@
+{
+  "openapi": "3.0.0",
+  "info": {
+    "title": "API ESPRIT Connect",
+    "description": "Documentation officielle de l'API ESPRIT Connect (Clubs, Étudiants, Administration, Authentification)",
+    "version": "1.0.0",
+    "contact": {
+      "name": "ESPRIT DAM Team"
+    }
+  },
+  "servers": [
+    {
+      "url": "http://localhost:3000/api",
+      "description": "Local Development Server"
+    }
+  ],
+  "paths": {
+    "/messages": {
+      "post": {
+        "tags": ["Messages"],
+        "summary": "Create a new message",
+        "operationId": "createMessage",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateMessageDto"
+              },
+              "example": {
+                "senderId": "user_alice_001",
+                "receiverId": "user_bob_002",
+                "content": "Hello, I wanted to discuss the Q4 roadmap",
+                "type": "text"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Message created successfully",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Message"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid input"
+          }
+        }
+      },
+      "get": {
+        "tags": ["Messages"],
+        "summary": "Get all messages",
+        "operationId": "getAllMessages",
+        "responses": {
+          "200": {
+            "description": "List of all messages",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/Message"
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/messages/unseen/{userId}": {
+      "get": {
+        "tags": ["Messages"],
+        "summary": "Get unseen messages for a user (all senders)",
+        "operationId": "getUnseenForUser",
+        "parameters": [
+          {
+            "name": "userId",
+            "in": "path",
+            "required": true,
+            "description": "The user ID to get unseen messages for",
+            "schema": {
+              "type": "string"
+            },
+            "example": "user_alice_001"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "List of unseen messages",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "type": "object",
+                    "properties": {
+                      "sender": {
+                        "type": "string"
+                      },
+                      "message": {
+                        "type": "string"
+                      },
+                      "messageId": {
+                        "type": "string"
+                      },
+                      "createdAt": {
+                        "type": "string",
+                        "format": "date-time"
+                      }
+                    }
+                  }
+                },
+                "example": [
+                  {
+                    "sender": "user_bob_002",
+                    "message": "Sure! Let's start with backend performance optimization",
+                    "messageId": "507f1f77bcf86cd799439011",
+                    "createdAt": "2025-12-04T10:30:00Z"
+                  }
+                ]
+              }
+            }
+          }
+        }
+      }
+    },
+    "/messages/unseen/{userId}/{otherId}": {
+      "get": {
+        "tags": ["Messages"],
+        "summary": "Get unseen messages between two users (other -> user)",
+        "operationId": "getUnseenBetween",
+        "parameters": [
+          {
+            "name": "userId",
+            "in": "path",
+            "required": true,
+            "description": "The user receiving the messages",
+            "schema": {
+              "type": "string"
+            },
+            "example": "user_alice_001"
+          },
+          {
+            "name": "otherId",
+            "in": "path",
+            "required": true,
+            "description": "The user sending the messages",
+            "schema": {
+              "type": "string"
+            },
+            "example": "user_bob_002"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "List of unseen messages from otherId to userId",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "type": "object",
+                    "properties": {
+                      "sender": {
+                        "type": "string"
+                      },
+                      "message": {
+                        "type": "string"
+                      }
+                    }
+                  }
+                },
+                "example": [
+                  {
+                    "sender": "user_bob_002",
+                    "message": "Sure! Let's start with backend performance optimization"
+                  },
+                  {
+                    "sender": "user_bob_002",
+                    "message": "Agreed. I'll prepare a detailed breakdown."
+                  }
+                ]
+              }
+            }
+          }
+        }
+      }
+    },
+    "/messages/read/{messageId}": {
+      "post": {
+        "tags": ["Messages"],
+        "summary": "Mark a single message as read",
+        "operationId": "markSingleMessageAsRead",
+        "parameters": [
+          {
+            "name": "messageId",
+            "in": "path",
+            "required": true,
+            "description": "The message ID to mark as read",
+            "schema": {
+              "type": "string"
+            },
+            "example": "507f1f77bcf86cd799439011"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Message marked as read successfully"
+          },
+          "404": {
+            "description": "Message not found"
+          }
+        }
+      }
+    },
+    "/messages/read/conversation": {
+      "post": {
+        "tags": ["Messages"],
+        "summary": "Mark a conversation as read (other -> user)",
+        "operationId": "markConversationAsRead",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "userId": {
+                    "type": "string",
+                    "description": "The user receiving the messages"
+                  },
+                  "otherId": {
+                    "type": "string",
+                    "description": "The user sending the messages"
+                  }
+                },
+                "required": ["userId", "otherId"]
+              },
+              "example": {
+                "userId": "user_alice_001",
+                "otherId": "user_bob_002"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Conversation marked as read successfully"
+          }
+        }
+      }
+    },
+    "/messages/conversations": {
+      "get": {
+        "tags": ["Messages"],
+        "summary": "Get all conversations for a user",
+        "operationId": "getUserConversations",
+        "parameters": [
+          {
+            "name": "userId",
+            "in": "query",
+            "required": true,
+            "description": "The user ID",
+            "schema": {
+              "type": "string"
+            },
+            "example": "user_alice_001"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "List of conversations"
+          }
+        }
+      }
+    },
+    "/messages/conversation/{u1}/{u2}": {
+      "get": {
+        "tags": ["Messages"],
+        "summary": "Get conversation between two users",
+        "operationId": "getConversation",
+        "parameters": [
+          {
+            "name": "u1",
+            "in": "path",
+            "required": true,
+            "description": "First user ID",
+            "schema": {
+              "type": "string"
+            },
+            "example": "user_alice_001"
+          },
+          {
+            "name": "u2",
+            "in": "path",
+            "required": true,
+            "description": "Second user ID",
+            "schema": {
+              "type": "string"
+            },
+            "example": "user_bob_002"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Messages between the two users"
+          }
+        }
+      }
+    },
+    "/messages/{id}": {
+      "get": {
+        "tags": ["Messages"],
+        "summary": "Find a message by ID",
+        "operationId": "getMessageById",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "description": "The message ID",
+            "schema": {
+              "type": "string"
+            },
+            "example": "507f1f77bcf86cd799439011"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Message found"
+          },
+          "404": {
+            "description": "Message not found"
+          }
+        }
+      },
+      "put": {
+        "tags": ["Messages"],
+        "summary": "Update a message",
+        "operationId": "updateMessage",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateMessageDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Message updated successfully"
+          }
+        }
+      },
+      "delete": {
+        "tags": ["Messages"],
+        "summary": "Delete a message",
+        "operationId": "deleteMessage",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Message deleted successfully"
+          },
+          "404": {
+            "description": "Message not found"
+          }
+        }
+      }
+    },
+    "/integrations/gradio/summarize-and-mark": {
+      "post": {
+        "tags": ["Integrations"],
+        "summary": "Summarize conversation and mark messages as read",
+        "operationId": "summarizeAndMarkAsRead",
+        "description": "This endpoint fetches unseen messages between two users, sends them to Gradio for summarization, and marks them as read.",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "oneOf": [
+                  {
+                    "type": "object",
+                    "properties": {
+                      "userId": {
+                        "type": "string",
+                        "description": "The user receiving the messages"
+                      },
+                      "otherId": {
+                        "type": "string",
+                        "description": "The user sending the messages"
+                      }
+                    },
+                    "required": ["userId", "otherId"],
+                    "description": "Fetch messages between two users"
+                  },
+                  {
+                    "type": "object",
+                    "properties": {
+                      "messages": {
+                        "type": "array",
+                        "items": {
+                          "type": "object",
+                          "properties": {
+                            "sender": {
+                              "type": "string"
+                            },
+                            "message": {
+                              "type": "string"
+                            }
+                          },
+                          "required": ["sender", "message"]
+                        }
+                      }
+                    },
+                    "required": ["messages"],
+                    "description": "Provide messages directly"
+                  }
+                ]
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Summarization successful",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "summary": {
+                      "type": "string",
+                      "description": "AI-generated summary of the conversation"
+                    },
+                    "keyPoints": {
+                      "type": "array",
+                      "items": {
+                        "type": "string"
+                      },
+                      "description": "Key points extracted from the conversation"
+                    }
+                  }
+                },
+                "example": {
+                  "summary": "Alice and Bob discussed Q4 roadmap priorities including backend performance optimization, security improvements, and cost/timeline analysis. They agreed to prepare a detailed breakdown.",
+                  "keyPoints": [
+                    "Backend performance optimization needed",
+                    "Security improvements should be considered",
+                    "Cost and timeline analysis required",
+                    "Detailed breakdown to be prepared"
+                  ]
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad request - missing required fields or invalid input"
+          },
+          "503": {
+            "description": "Gradio service unavailable"
+          }
+        }
+      }
+    }
+  },
+  "components": {
+    "schemas": {
+      "CreateMessageDto": {
+        "type": "object",
+        "properties": {
+          "senderId": {
+            "type": "string",
+            "description": "ID of the user sending the message",
+            "example": "user_alice_001"
+          },
+          "receiverId": {
+            "type": "string",
+            "description": "ID of the user receiving the message",
+            "example": "user_bob_002"
+          },
+          "content": {
+            "type": "string",
+            "description": "Message content",
+            "example": "Hello, I wanted to discuss the Q4 roadmap"
+          },
+          "type": {
+            "type": "string",
+            "enum": ["text", "audio", "file"],
+            "description": "Type of message",
+            "example": "text"
+          }
+        },
+        "required": ["senderId", "receiverId", "content", "type"]
+      },
+      "Message": {
+        "type": "object",
+        "properties": {
+          "_id": {
+            "type": "string",
+            "description": "MongoDB document ID",
+            "example": "507f1f77bcf86cd799439011"
+          },
+          "senderId": {
+            "type": "string",
+            "description": "ID of the user who sent the message",
+            "example": "user_alice_001"
+          },
+          "receiverId": {
+            "type": "string",
+            "description": "ID of the user who received the message",
+            "example": "user_bob_002"
+          },
+          "content": {
+            "type": "string",
+            "description": "Message content",
+            "example": "Hello, I wanted to discuss the Q4 roadmap"
+          },
+          "type": {
+            "type": "string",
+            "enum": ["text", "audio", "file"],
+            "description": "Type of message",
+            "example": "text"
+          },
+          "isRead": {
+            "type": "boolean",
+            "description": "Whether the message has been read",
+            "example": false
+          },
+          "readAt": {
+            "type": "string",
+            "format": "date-time",
+            "description": "Timestamp when the message was read",
+            "example": null,
+            "nullable": true
+          },
+          "createdAt": {
+            "type": "string",
+            "format": "date-time",
+            "description": "Message creation timestamp",
+            "example": "2025-12-04T10:30:00Z"
+          },
+          "updatedAt": {
+            "type": "string",
+            "format": "date-time",
+            "description": "Message last update timestamp",
+            "example": "2025-12-04T10:30:00Z"
+          }
+        }
+      }
+    },
+    "securitySchemes": {
+      "bearer": {
+        "type": "http",
+        "scheme": "bearer",
+        "bearerFormat": "JWT",
+        "description": "JWT Bearer token"
+      }
+    }
+  },
+  "tags": [
+    {
+      "name": "Messages",
+      "description": "Message management endpoints including read/unread functionality"
+    },
+    {
+      "name": "Integrations",
+      "description": "Third-party service integrations (Gradio, etc.)"
+    }
+  ]
+}
