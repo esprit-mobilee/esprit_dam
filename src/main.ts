@@ -24,6 +24,9 @@ function getLocalIp(): string {
 }
 
 async function bootstrap() {
+  // 🔎 Récupérer l'adresse IP locale
+  const localIp = getLocalIp();
+
   // ⚠ obligatoire pour servir les fichiers (pdf, images…)
   // 👇 On tape l'app en NestExpressApplication pour avoir useStaticAssets typé
   const app = await NestFactory.create<NestExpressApplication>(AppModule);
@@ -114,7 +117,7 @@ async function bootstrap() {
 
   // ✅ Lancer le serveur
   const port = process.env.PORT ?? 3000;
-await app.listen(port, '0.0.0.0');
+  await app.listen(port, '0.0.0.0');
 
 
   console.log('🚀 Serveur démarré avec validation DTO et filtres globaux');
